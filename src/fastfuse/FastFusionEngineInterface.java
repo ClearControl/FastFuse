@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
 import clearcl.ClearCLImage;
+import clearcl.enums.ImageChannelDataType;
 import coremem.ContiguousMemoryInterface;
 import fastfuse.tasks.FusionTaskInterface;
 
@@ -73,11 +74,14 @@ public interface FastFusionEngineInterface
    * 
    * @param pSlotKey
    *          slot key
+   * @param pImageChannelDataType
+   *          image channel data type
    * @param pDimensions
    *          image dimensions
    * @return (available flag, image (already or newly) allocated)
    */
   MutablePair<Boolean, ClearCLImage> ensureImageAllocated(String pSlotKey,
+                                                          ImageChannelDataType pImageChannelDataType,
                                                           long... pDimensions);
 
   /**
@@ -85,24 +89,39 @@ public interface FastFusionEngineInterface
    * simply copy the image reference from one slot to another.
    * 
    * @param pSrcSlotKey
+   *          source slot
    * @param pDstSlotKey
+   *          destination slot
    */
   void assignImageToAnotherSlotKey(String pSrcSlotKey,
                                    String pDstSlotKey);
 
   /**
-   * Passes image data for a given key
+   * Passes image data located in non GPU memory for a given key
    * 
    * @param pSlotKey
    *          image key
    * @param pImageData
    *          image data
+   * @param pImageChannelDataType
+   *          image channel data type
    * @param pDimensions
    *          corresponding dimensions
    */
   void passImage(String pSlotKey,
                  ContiguousMemoryInterface pImageData,
+                 final ImageChannelDataType pImageChannelDataType,
                  long... pDimensions);
+
+  /**
+   * Passes image data located in GPU memory for a given key
+   * 
+   * @param pSlotKey
+   *          image key
+   * @param pImage
+   *          image
+   */
+  void passImage(String pSlotKey, ClearCLImage pImage);
 
   /**
    * Executes one task that is ready (= all required images are available). If

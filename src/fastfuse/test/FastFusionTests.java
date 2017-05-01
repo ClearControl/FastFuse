@@ -8,6 +8,7 @@ import clearcl.ClearCLContext;
 import clearcl.ClearCLDevice;
 import clearcl.backend.ClearCLBackendInterface;
 import clearcl.backend.ClearCLBackends;
+import clearcl.enums.ImageChannelDataType;
 import clearcl.viewer.ClearCLImageViewer;
 import coremem.offheap.OffHeapMemory;
 import fastfuse.FastFusionEngine;
@@ -75,7 +76,12 @@ public class FastFusionTests
       assertFalse(lStackFusion.isImageAvailable("b"));
       assertFalse(lStackFusion.isImageAvailable("c"));
 
-      lStackFusion.passImage("a", lStackDataA, width, height, depth);
+      lStackFusion.passImage("a",
+                             lStackDataA,
+                             ImageChannelDataType.UnsignedInt16,
+                             width,
+                             height,
+                             depth);
 
       assertTrue(lStackFusion.isImageAvailable("a"));
       assertFalse(lStackFusion.isImageAvailable("b"));
@@ -83,7 +89,12 @@ public class FastFusionTests
 
       assertTrue(lStackFusion.executeAllTasks() == 0);
 
-      lStackFusion.passImage("b", lStackDataB, width, height, depth);
+      lStackFusion.passImage("b",
+                             lStackDataB,
+                             ImageChannelDataType.UnsignedInt16,
+                             width,
+                             height,
+                             depth);
 
       assertTrue(lStackFusion.isImageAvailable("a"));
       assertTrue(lStackFusion.isImageAvailable("b"));

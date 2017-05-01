@@ -94,10 +94,12 @@ public class FastFusionEngine implements FastFusionEngineInterface
   @Override
   public void passImage(String pSlotKey,
                         ContiguousMemoryInterface pImageData,
+                        final ImageChannelDataType pImageChannelDataType,
                         long... pDimensions)
   {
     MutablePair<Boolean, ClearCLImage> lPair =
                                              ensureImageAllocated(pSlotKey,
+                                                                  pImageChannelDataType,
                                                                   pDimensions);
 
     lPair.getRight().readFrom(pImageData, true);
@@ -105,7 +107,20 @@ public class FastFusionEngine implements FastFusionEngineInterface
   }
 
   @Override
+  public void passImage(String pSlotKey, ClearCLImage pImage)
+  {
+    MutablePair<Boolean, ClearCLImage> lPair =
+                                             ensureImageAllocated(pSlotKey,
+                                                                  pImage.getChannelDataType(),
+                                                                  pImage.getDimensions());
+
+    pImage.copyTo(lPair.getRight(), true);
+    lPair.setLeft(true);
+  }
+
+  @Override
   public MutablePair<Boolean, ClearCLImage> ensureImageAllocated(final String pSlotKey,
+                                                                 final ImageChannelDataType pImageChannelDataType,
                                                                  final long... pDimensions)
   {
 
@@ -130,7 +145,7 @@ public class FastFusionEngine implements FastFusionEngineInterface
       lImage =
              mContext.createSingleChannelImage(HostAccessType.ReadWrite,
                                                KernelAccessType.ReadWrite,
-                                               ImageChannelDataType.UnsignedInt16,
+                                               pImageChannelDataType,
                                                pDimensions);
 
       lPair.setLeft(false);

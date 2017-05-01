@@ -1,6 +1,7 @@
 package fastfuse.tasks;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -23,8 +24,8 @@ public abstract class FusionTaskBase implements FusionTaskInterface
   private Class<AverageTask> mClass;
   private String mSourceFile;
   private ClearCLProgram mProgram;
-  private String mKernelName;
-  private ClearCLKernel mKernel;
+  private HashMap<String, ClearCLKernel> mKernelMap =
+                                                    new HashMap<String, ClearCLKernel>();
 
   /**
    * Instantiates a fusion task given the keys of required images
@@ -39,24 +40,24 @@ public abstract class FusionTaskBase implements FusionTaskInterface
       mRequiredImagesSlotKeysSet.add(lSlotKey);
   }
 
-  protected void setupProgramAndKernel(Class<AverageTask> pClass,
-                                       String pSourceFile,
-                                       String pKernelName)
+  protected void setupProgram(Class<AverageTask> pClass,
+                              String pSourceFile)
   {
     mClass = pClass;
     mSourceFile = pSourceFile;
-    mKernelName = pKernelName;
   }
 
-  protected ClearCLKernel getKernel(ClearCLContext pContext) throws IOException
+  protected ClearCLKernel getKernel(ClearCLContext pContext,
+                                    String pKernelName) throws IOException
   {
-    if (mKernel != null)
-      return mKernel;
+    if (mKernelMap.get(pKernelName) != null)
+      return mKernelMap.get(pKernelName);
     mProgram = pContext.createProgram(mClass, mSourceFile);
     mProgram.addBuildOptionAllMathOpt();
     mProgram.buildAndLog();
-    mKernel = mProgram.createKernel(mKernelName);
-    return mKernel;
+    ClearCLKernel lKernel = mProgram.createKernel(pKernelName);
+    mKernelMap.put(pKernelName, lKernel);
+    return lKernel;
   }
 
   @Override
@@ -75,9 +76,9 @@ public abstract class FusionTaskBase implements FusionTaskInterface
   @Override
   public String toString()
   {
-    return String.format("FusionTaskBase [mKernelName=%s, mRequiredImagesSlotKeysSet=%s]",
-                         mKernelName,
-                         mRequiredImagesSlotKeysSet);
+    return String.format("FusionTaskBase [mRequiredImagesSlotKeysSet=%s, mKernels=%s]",
+                         mRequiredImagesSlotKeysSet,
+                         mKernelMap.toString());
   }
 
 }

@@ -10,7 +10,7 @@ public class FastFusionException extends RuntimeException
   private static final long serialVersionUID = 1L;
 
   /**
-   * Instanciates a Fast Fusion exception given a cause and message
+   * Instantiates a Fast Fusion exception given a cause and message
    * 
    * @param pCause
    *          cause
