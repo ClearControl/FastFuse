@@ -6,9 +6,12 @@ import javax.vecmath.Vector3f;
 import clearcl.ClearCL;
 import clearcl.ClearCLContext;
 import clearcl.ClearCLDevice;
+import clearcl.ClearCLImage;
 import clearcl.backend.ClearCLBackends;
+import clearcl.enums.ImageChannelDataType;
 import clearcl.viewer.ClearCLImageViewer;
 import fastfuse.FastFusionEngine;
+import fastfuse.stackgen.ImageCache;
 import fastfuse.stackgen.LightSheetMicroscopeSimulatorXWing;
 import fastfuse.stackgen.StackGenerator;
 import fastfuse.tasks.AverageTask;
@@ -159,11 +162,18 @@ public class StackGeneratorTests
   @Test
   public void testXWingFusion() throws Exception
   {
+
+    boolean mUseCache = true;
+
     int lMaxCameraResolution = 1024;
+
+    int lStackDepth = 32;
 
     int lPhantomWidth = 320;
     int lPhantomHeight = lPhantomWidth;
     int lPhantomDepth = lPhantomWidth;
+
+    ImageCache lCache = new ImageCache("testXWingFusion");
 
     try (
         ClearCL lClearCL =
@@ -192,6 +202,7 @@ public class StackGeneratorTests
                                                         "C0L2",
                                                         "C0L3",
                                                         "C0"));
+
       lFastFusionEngine.addTask(new TenengradFusionTask("C1L0",
                                                         "C1L1",
                                                         "C1L2",
@@ -224,18 +235,41 @@ public class StackGeneratorTests
         for (int l = 0; l < 4; l++)
         {
           String lKey = String.format("C%dL%d", c, l);
-          lStackGenerator.generateStack(c, l, -0.3f, 0.3f, 32);
-          lFastFusionEngine.passImage(lKey,
-                                      lStackGenerator.getStack());
+          ClearCLImage lStack;
+          if (mUseCache)
+          {
+            lStack =
+                   lContext.createSingleChannelImage(ImageChannelDataType.UnsignedInt16,
+                                                     lMaxCameraResolution / 2,
+                                                     lMaxCameraResolution,
+                                                     lStackDepth);
+            lCache.loadImage(lKey, lStack);
+          }
+          else
+          {
+            lStackGenerator.generateStack(c,
+                                          l,
+                                          -0.3f,
+                                          0.3f,
+                                          lStackDepth);
+            lStack = lStackGenerator.getStack();
+            lCache.saveImage(lKey, lStack);
+          }
+          lFastFusionEngine.passImage(lKey, lStack);
         }
 
-      lFastFusionEngine.executeAllTasks();
+      // lFastFusionEngine.executeAllTasks();
 
       ClearCLImageViewer lView =
-                               ClearCLImageViewer.view(lFastFusionEngine.getImage("fused"));
+                               ClearCLImageViewer.view(lFastFusionEngine.getImage("C0L0"));
 
       lView.waitWhileShowing();
     }
+
+    // mTransformMatrixBuffer =
+    // MatrixUtils.matrixToBuffer(mContext,
+    // mTransformMatrixBuffer,
+    // getPhantomTransformMatrix());
 
   }
 
