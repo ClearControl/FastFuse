@@ -16,7 +16,7 @@ import clearcl.enums.HostAccessType;
 import clearcl.enums.ImageChannelDataType;
 import clearcl.enums.KernelAccessType;
 import coremem.ContiguousMemoryInterface;
-import fastfuse.tasks.FusionTaskInterface;
+import fastfuse.tasks.TaskInterface;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 
@@ -32,10 +32,10 @@ public class FastFusionEngine implements FastFusionEngineInterface
   private final ConcurrentHashMap<String, MutablePair<Boolean, ClearCLImage>> mImageSlotsMap =
                                                                                              new ConcurrentHashMap<>();
 
-  private final ArrayList<FusionTaskInterface> mFusionTasks =
+  private final ArrayList<TaskInterface> mFusionTasks =
                                                             new ArrayList<>();
 
-  private final HashSet<FusionTaskInterface> mExecutedFusionTasks =
+  private final HashSet<TaskInterface> mExecutedFusionTasks =
                                                                   new HashSet<>();
 
   /**
@@ -80,13 +80,13 @@ public class FastFusionEngine implements FastFusionEngineInterface
   }
 
   @Override
-  public void addTask(FusionTaskInterface pTask)
+  public void addTask(TaskInterface pTask)
   {
     mFusionTasks.add(pTask);
   }
 
   @Override
-  public ArrayList<FusionTaskInterface> getTasks()
+  public ArrayList<TaskInterface> getTasks()
   {
     return mFusionTasks;
   }
@@ -215,11 +215,11 @@ public class FastFusionEngine implements FastFusionEngineInterface
   @Override
   public int executeSeveralTasks(int pMaxNumberOfTasks)
   {
-    ArrayList<FusionTaskInterface> lReadyTasks = new ArrayList<>();
+    ArrayList<TaskInterface> lReadyTasks = new ArrayList<>();
 
     Set<String> lAvailableImageKeys = getAvailableImagesSlotKeys();
 
-    for (FusionTaskInterface lFusionTask : mFusionTasks)
+    for (TaskInterface lFusionTask : mFusionTasks)
       if (!mExecutedFusionTasks.contains(lFusionTask))
       {
         boolean lImagesAvailable =
@@ -239,7 +239,7 @@ public class FastFusionEngine implements FastFusionEngineInterface
 
     for (int i = 0; i < lNumberOfTasksReady; i++)
     {
-      FusionTaskInterface lTask = lReadyTasks.get(i);
+      TaskInterface lTask = lReadyTasks.get(i);
       lTask.enqueue(this, true);
       mExecutedFusionTasks.add(lTask);
     }

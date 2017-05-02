@@ -1,8 +1,5 @@
 package fastfuse.stackgen;
 
-import java.io.File;
-import java.util.HashMap;
-
 import clearcl.ClearCLContext;
 import clearcl.ClearCLImage;
 import clearcl.enums.ImageChannelDataType;
@@ -35,10 +32,8 @@ public class StackGenerator implements AutoCloseable
 
   private ClearCLImage mStack;
 
-
   /**
    * Instantiates a stack generator given stack dimensions
-   * @param pName name used for caching purposes
    * 
    * @param pSimulator
    *          microscope simulator to use
@@ -99,10 +94,8 @@ public class StackGenerator implements AutoCloseable
   }
 
   /**
-   * Sets centered ROI width and height for a given camera
+   * Sets centered ROI width and height for all cameras
    * 
-   * @param pCameraIndex
-   *          camera index
    * @param pWidth
    *          ROI width
    * @param pHeight

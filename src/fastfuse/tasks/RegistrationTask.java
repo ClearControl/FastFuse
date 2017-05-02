@@ -1,4 +1,4 @@
-package fastfuse.tasks.regfusion;
+package fastfuse.tasks;
 
 import javax.vecmath.Matrix4f;
 
@@ -6,20 +6,19 @@ import clearcl.ClearCLBuffer;
 import clearcl.ClearCLImage;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.registration.Registration;
-import fastfuse.tasks.AverageTask;
-import fastfuse.tasks.FusionTaskBase;
-import fastfuse.tasks.FusionTaskInterface;
 
 /**
- * Registered fusion task
+ * Stack registration. This task takes two images, and applies a rigid transform
+ * to the second in order to register it to the first. The output is the
+ * transformed (second) image.
  *
  * @author royer (@uwe: please add your name to all classes that you touch)
  */
-public class RegisteredFusionTask extends FusionTaskBase
-                                  implements FusionTaskInterface
+public class RegistrationTask extends TaskBase
+                              implements TaskInterface
 {
   private String[] mInputImagesSlotKeys;
-  private String mDestImageSlotKey;
+  private String mTransformedImageSlotKey;
 
   // example:
   private ClearCLBuffer mTempBuffer;
@@ -28,26 +27,26 @@ public class RegisteredFusionTask extends FusionTaskBase
   private Registration mRegistration;
 
   /**
-   * Instanciates a registered fusion task
+   * Instantiates a registered fusion task
    * 
    * @param pImageASlotKey
    *          first stack
    * @param pImageBSlotKey
    *          second stack
-   * @param pDestImageKey
-   *          fused stack
+   * @param pImageBTransformedKey
+   *          transformed stack
    */
-  public RegisteredFusionTask(String pImageASlotKey,
-                              String pImageBSlotKey,
-                              String pDestImageKey)
+  public RegistrationTask(String pImageASlotKey,
+                          String pImageBSlotKey,
+                          String pImageBTransformedKey)
   {
     super(pImageASlotKey, pImageBSlotKey);
     setupProgram(AverageTask.class, "./kernels/fuseavg.cl"); // replace with
-                                                             // another kenel
+                                                             // another source file
                                                              // file
     mInputImagesSlotKeys = new String[]
     { pImageASlotKey, pImageBSlotKey };
-    mDestImageSlotKey = pDestImageKey;
+    mTransformedImageSlotKey = pImageBTransformedKey;
   }
 
   /**
@@ -117,7 +116,7 @@ public class RegisteredFusionTask extends FusionTaskBase
     // Just use the slot key defined for that image to retreive an imageof right
     // dimensions, and data type:
     ClearCLImage lFusedImage = pFastFusionEngine
-                                                .ensureImageAllocated(mDestImageSlotKey,
+                                                .ensureImageAllocated(mTransformedImageSlotKey,
                                                                       lImageA.getChannelDataType(),
                                                                       lImageA.getDimensions())
                                                 .getRight();

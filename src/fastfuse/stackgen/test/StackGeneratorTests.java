@@ -12,7 +12,8 @@ import fastfuse.FastFusionEngine;
 import fastfuse.stackgen.LightSheetMicroscopeSimulatorXWing;
 import fastfuse.stackgen.StackGenerator;
 import fastfuse.tasks.AverageTask;
-import fastfuse.tasks.regfusion.RegisteredFusionTask;
+import fastfuse.tasks.RegistrationTask;
+import fastfuse.tasks.TenengradFusionTask;
 
 import org.junit.Test;
 import simbryo.util.geom.GeometryUtils;
@@ -150,7 +151,7 @@ public class StackGeneratorTests
   }
 
   /**
-   * Test Dummy Average Fusion
+   * Test XWing Fusion
    * 
    * @throws Exception
    *           NA
@@ -186,21 +187,21 @@ public class StackGeneratorTests
       FastFusionEngine lFastFusionEngine =
                                          new FastFusionEngine(lContext);
 
-      lFastFusionEngine.addTask(new AverageTask("C0L0",
-                                                "C0L1",
-                                                "C0L2",
-                                                "C0L3",
-                                                "C0"));
-      lFastFusionEngine.addTask(new AverageTask("C1L0",
-                                                "C1L1",
-                                                "C1L2",
-                                                "C1L3",
-                                                "C1"));
+      lFastFusionEngine.addTask(new TenengradFusionTask("C0L0",
+                                                        "C0L1",
+                                                        "C0L2",
+                                                        "C0L3",
+                                                        "C0"));
+      lFastFusionEngine.addTask(new TenengradFusionTask("C1L0",
+                                                        "C1L1",
+                                                        "C1L2",
+                                                        "C1L3",
+                                                        "C1"));
 
-      RegisteredFusionTask lRegisteredFusionTask =
-                                                 new RegisteredFusionTask("C0",
-                                                                          "C1",
-                                                                          "fused");
+      RegistrationTask lRegisteredFusionTask =
+                                             new RegistrationTask("C0",
+                                                                  "C1",
+                                                                  "C1reg");
 
       Matrix4f lMatrix = GeometryUtils.rotY((float) Math.PI,
                                             new Vector3f(0.5f,
@@ -209,6 +210,10 @@ public class StackGeneratorTests
       lRegisteredFusionTask.setInitialTransformMatrix(lMatrix);
 
       lFastFusionEngine.addTask(lRegisteredFusionTask);
+
+      lFastFusionEngine.addTask(new TenengradFusionTask("C0",
+                                                        "C1reg",
+                                                        "fused"));
 
       lStackGenerator.setCenteredROI(lMaxCameraResolution / 2,
                                      lMaxCameraResolution);

@@ -6,15 +6,16 @@ import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
 
 /**
- * Fuses two stacks using the average method.
+ * Fuses two stacks by weighted average, the weights are obtained by computing
+ * Tenengrad image quality metric
  *
  * @author royer
  */
-public class AverageTask extends FusionTaskBase
-                         implements TaskInterface
+public class TenengradFusionTask extends FusionTaskBase
+                                 implements TaskInterface
 {
   /**
-   * Instantiates an average fusion task given the keys for two input images and
+   * Instantiates a Tenengrad fusion task given the keys for two input images and
    * destination image
    * 
    * @param pImageASlotKey
@@ -24,16 +25,16 @@ public class AverageTask extends FusionTaskBase
    * @param pDestImageKey
    *          destination image key
    */
-  public AverageTask(String pImageASlotKey,
-                     String pImageBSlotKey,
-                     String pDestImageKey)
+  public TenengradFusionTask(String pImageASlotKey,
+                             String pImageBSlotKey,
+                             String pDestImageKey)
   {
     super(pImageASlotKey, pImageBSlotKey, pDestImageKey);
-    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl");
+    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace with a new file
   }
 
   /**
-   * Instantiates an average fusion task given the keys for the four input images
+   * Instantiates an] Tenengrad fusion task given the keys for the four input images
    * and destination image.
    * 
    * @param pImageASlotKey
@@ -47,26 +48,26 @@ public class AverageTask extends FusionTaskBase
    * @param pDestImageSlotKey
    *          destination image key
    */
-  public AverageTask(String pImageASlotKey,
-                     String pImageBSlotKey,
-                     String pImageCSlotKey,
-                     String pImageDSlotKey,
-                     String pDestImageSlotKey)
+  public TenengradFusionTask(String pImageASlotKey,
+                             String pImageBSlotKey,
+                             String pImageCSlotKey,
+                             String pImageDSlotKey,
+                             String pDestImageSlotKey)
   {
     super(pImageASlotKey,
           pImageBSlotKey,
           pImageCSlotKey,
           pImageDSlotKey,
           pDestImageSlotKey);
-    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl");
+    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace with a new file
   }
 
   public boolean fuse(ClearCLImage lImageA,
-                         ClearCLImage lImageB,
-                         ClearCLImage lImageC,
-                         ClearCLImage lImageD,
-                         MutablePair<Boolean, ClearCLImage> pImageAndFlag,
-                         boolean pWaitToFinish)
+                      ClearCLImage lImageB,
+                      ClearCLImage lImageC,
+                      ClearCLImage lImageD,
+                      MutablePair<Boolean, ClearCLImage> pImageAndFlag,
+                      boolean pWaitToFinish)
   {
     ClearCLImage lImageFused = pImageAndFlag.getValue();
 
@@ -74,10 +75,11 @@ public class AverageTask extends FusionTaskBase
 
     try
     {
+      // if you have setup the program (see above) then you can get a hold on the kernel as shown below:
       if (mInputImagesSlotKeys.length == 2)
-        lKernel = getKernel(lImageFused.getContext(), "fuseavg2");
+        lKernel = getKernel(lImageFused.getContext(), "fuseavg2"); // TODO: replace with tenengrad kernel name
       else if (mInputImagesSlotKeys.length == 4)
-        lKernel = getKernel(lImageFused.getContext(), "fuseavg4");
+        lKernel = getKernel(lImageFused.getContext(), "fuseavg4"); // TODO: replace with tenengrad kernel name
     }
     catch (Exception e)
     {
@@ -85,6 +87,7 @@ public class AverageTask extends FusionTaskBase
       return false;
     }
 
+    // kernel arguments are given by name
     lKernel.setArgument("imagea", lImageA);
     lKernel.setArgument("imageb", lImageB);
     if (mInputImagesSlotKeys.length == 4)
@@ -102,5 +105,4 @@ public class AverageTask extends FusionTaskBase
 
     return true;
   }
-
 }

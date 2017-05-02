@@ -7,7 +7,7 @@ import java.util.concurrent.ExecutionException;
 import clearcl.ClearCLImage;
 import clearcl.enums.ImageChannelDataType;
 import coremem.ContiguousMemoryInterface;
-import fastfuse.tasks.FusionTaskInterface;
+import fastfuse.tasks.TaskInterface;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 
@@ -33,14 +33,14 @@ public interface FastFusionEngineInterface
    * @param pTask
    *          task to add
    */
-  void addTask(FusionTaskInterface pTask);
+  void addTask(TaskInterface pTask);
 
   /**
    * Returns the tasks in this Fast Fusion engine
    * 
    * @return list of tasks
    */
-  ArrayList<FusionTaskInterface> getTasks();
+  ArrayList<TaskInterface> getTasks();
 
   /**
    * Returns the image for the given key

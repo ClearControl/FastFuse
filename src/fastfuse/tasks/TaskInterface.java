@@ -5,11 +5,11 @@ import java.util.Set;
 import fastfuse.FastFusionEngineInterface;
 
 /**
- * Fusion task interface
+ * Task interface
  *
  * @author royer
  */
-public interface FusionTaskInterface
+public interface TaskInterface
 {
 
   /**

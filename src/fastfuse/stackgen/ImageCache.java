@@ -4,7 +4,6 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 import java.nio.channels.FileChannel;
-import java.util.HashMap;
 
 import clearcl.ClearCLHostImageBuffer;
 import clearcl.ClearCLImage;
@@ -22,10 +21,11 @@ public class ImageCache
 
   private String mName;
 
-  private HashMap<String, File> mCacheMap = new HashMap<>();
-
   /**
+   * Instantiates an image cache with a given name
+   * 
    * @param pName
+   *          image cache name
    */
   public ImageCache(String pName)
   {
@@ -51,7 +51,7 @@ public class ImageCache
 
     pImage.copyTo(lBuffer, true);
 
-    File lFile = new File(cCacheFolder, pImageName);
+    File lFile = new File(new File(cCacheFolder, mName), pImageName);
 
     RandomAccessFile lRandomAccessFile = new RandomAccessFile(lFile,
                                                               "rw");
@@ -83,7 +83,7 @@ public class ImageCache
     ClearCLHostImageBuffer lBuffer =
                                    ClearCLHostImageBuffer.allocateSameAs(pImage);
 
-    File lFile = new File(cCacheFolder, pImageName);
+    File lFile = new File(new File(cCacheFolder, mName), pImageName);
 
     RandomAccessFile lRandomAccessFile = new RandomAccessFile(lFile,
                                                               "rw");
