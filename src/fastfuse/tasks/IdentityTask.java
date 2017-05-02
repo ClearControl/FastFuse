@@ -8,8 +8,7 @@ import fastfuse.FastFusionEngineInterface;
  *
  * @author royer
  */
-public class IdentityTask extends TaskBase
-                          implements TaskInterface
+public class IdentityTask extends TaskBase implements TaskInterface
 {
 
   private final String mSrcImageSlotKey, mDstImageSlotKey;

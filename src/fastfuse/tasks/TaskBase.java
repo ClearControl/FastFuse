@@ -40,8 +40,7 @@ public abstract class TaskBase implements TaskInterface
       mRequiredImagesSlotKeysSet.add(lSlotKey);
   }
 
-  protected void setupProgram(Class<?> pClass,
-                              String pSourceFile)
+  protected void setupProgram(Class<?> pClass, String pSourceFile)
   {
     mClass = pClass;
     mSourceFile = pSourceFile;

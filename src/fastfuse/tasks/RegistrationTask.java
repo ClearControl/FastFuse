@@ -42,7 +42,8 @@ public class RegistrationTask extends TaskBase
   {
     super(pImageASlotKey, pImageBSlotKey);
     setupProgram(AverageTask.class, "./kernels/fuseavg.cl"); // replace with
-                                                             // another source file
+                                                             // another source
+                                                             // file
                                                              // file
     mInputImagesSlotKeys = new String[]
     { pImageASlotKey, pImageBSlotKey };

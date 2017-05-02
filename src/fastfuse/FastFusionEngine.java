@@ -33,10 +33,10 @@ public class FastFusionEngine implements FastFusionEngineInterface
                                                                                              new ConcurrentHashMap<>();
 
   private final ArrayList<TaskInterface> mFusionTasks =
-                                                            new ArrayList<>();
+                                                      new ArrayList<>();
 
   private final HashSet<TaskInterface> mExecutedFusionTasks =
-                                                                  new HashSet<>();
+                                                            new HashSet<>();
 
   /**
    * Instantiates a StackFusion object given a CLearCL context

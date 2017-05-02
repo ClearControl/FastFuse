@@ -2,13 +2,13 @@ package fastfuse.tasks;
 
 import java.util.Arrays;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-
 import clearcl.ClearCLImage;
 import clearcl.enums.ImageChannelDataType;
 import clearcl.viewer.ClearCLImageViewer;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.FastFusionException;
+
+import org.apache.commons.lang3.tuple.MutablePair;
 
 /**
  * Base class providing common machinery for fusing 2 or 4 stacks together.
@@ -45,8 +45,8 @@ public abstract class FusionTaskBase extends TaskBase
   }
 
   /**
-   * Instantiates an average fusion task given the keys for the four input images
-   * and destination image.
+   * Instantiates an average fusion task given the keys for the four input
+   * images and destination image.
    * 
    * @param pImageASlotKey
    *          image A key

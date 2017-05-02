@@ -1,9 +1,9 @@
 package fastfuse.tasks;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
+
+import org.apache.commons.lang3.tuple.MutablePair;
 
 /**
  * Fuses two stacks using the average method.
@@ -33,8 +33,8 @@ public class AverageTask extends FusionTaskBase
   }
 
   /**
-   * Instantiates an average fusion task given the keys for the four input images
-   * and destination image.
+   * Instantiates an average fusion task given the keys for the four input
+   * images and destination image.
    * 
    * @param pImageASlotKey
    *          image A key
@@ -62,11 +62,11 @@ public class AverageTask extends FusionTaskBase
   }
 
   public boolean fuse(ClearCLImage lImageA,
-                         ClearCLImage lImageB,
-                         ClearCLImage lImageC,
-                         ClearCLImage lImageD,
-                         MutablePair<Boolean, ClearCLImage> pImageAndFlag,
-                         boolean pWaitToFinish)
+                      ClearCLImage lImageB,
+                      ClearCLImage lImageC,
+                      ClearCLImage lImageD,
+                      MutablePair<Boolean, ClearCLImage> pImageAndFlag,
+                      boolean pWaitToFinish)
   {
     ClearCLImage lImageFused = pImageAndFlag.getValue();
 

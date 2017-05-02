@@ -1,9 +1,9 @@
 package fastfuse.tasks;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
+
+import org.apache.commons.lang3.tuple.MutablePair;
 
 /**
  * Fuses two stacks by weighted average, the weights are obtained by computing
@@ -15,8 +15,8 @@ public class TenengradFusionTask extends FusionTaskBase
                                  implements TaskInterface
 {
   /**
-   * Instantiates a Tenengrad fusion task given the keys for two input images and
-   * destination image
+   * Instantiates a Tenengrad fusion task given the keys for two input images
+   * and destination image
    * 
    * @param pImageASlotKey
    *          image A slot key
@@ -30,12 +30,14 @@ public class TenengradFusionTask extends FusionTaskBase
                              String pDestImageKey)
   {
     super(pImageASlotKey, pImageBSlotKey, pDestImageKey);
-    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace with a new file
+    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace
+                                                                // with a new
+                                                                // file
   }
 
   /**
-   * Instantiates an] Tenengrad fusion task given the keys for the four input images
-   * and destination image.
+   * Instantiates an] Tenengrad fusion task given the keys for the four input
+   * images and destination image.
    * 
    * @param pImageASlotKey
    *          image A key
@@ -59,7 +61,9 @@ public class TenengradFusionTask extends FusionTaskBase
           pImageCSlotKey,
           pImageDSlotKey,
           pDestImageSlotKey);
-    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace with a new file
+    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace
+                                                                // with a new
+                                                                // file
   }
 
   public boolean fuse(ClearCLImage lImageA,
@@ -75,11 +79,22 @@ public class TenengradFusionTask extends FusionTaskBase
 
     try
     {
-      // if you have setup the program (see above) then you can get a hold on the kernel as shown below:
+      // if you have setup the program (see above) then you can get a hold on
+      // the kernel as shown below:
       if (mInputImagesSlotKeys.length == 2)
-        lKernel = getKernel(lImageFused.getContext(), "fuseavg2"); // TODO: replace with tenengrad kernel name
+        lKernel = getKernel(lImageFused.getContext(), "fuseavg2"); // TODO:
+                                                                   // replace
+                                                                   // with
+                                                                   // tenengrad
+                                                                   // kernel
+                                                                   // name
       else if (mInputImagesSlotKeys.length == 4)
-        lKernel = getKernel(lImageFused.getContext(), "fuseavg4"); // TODO: replace with tenengrad kernel name
+        lKernel = getKernel(lImageFused.getContext(), "fuseavg4"); // TODO:
+                                                                   // replace
+                                                                   // with
+                                                                   // tenengrad
+                                                                   // kernel
+                                                                   // name
     }
     catch (Exception e)
     {
