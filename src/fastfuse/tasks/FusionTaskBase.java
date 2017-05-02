@@ -22,6 +22,7 @@ public abstract class FusionTaskBase extends TaskBase
   protected final String mDestImageSlotKey;
   protected ClearCLImageViewer mViewA, mViewB, mViewFused;
   protected volatile boolean mDebugDisplay = false;
+  protected ImageChannelDataType mDestinationImageDataType;
 
   /**
    * Instantiates an average fusion task given the keys for two input images and
@@ -42,6 +43,8 @@ public abstract class FusionTaskBase extends TaskBase
     mInputImagesSlotKeys = new String[]
     { pImageASlotKey, pImageBSlotKey };
     mDestImageSlotKey = pDestImageKey;
+
+    mDestinationImageDataType = ImageChannelDataType.UnsignedInt16;
   }
 
   /**
@@ -75,6 +78,8 @@ public abstract class FusionTaskBase extends TaskBase
       pImageCSlotKey,
       pImageDSlotKey };
     mDestImageSlotKey = pDestImageSlotKey;
+
+    mDestinationImageDataType = ImageChannelDataType.UnsignedInt16;
   }
 
   @Override
@@ -125,7 +130,7 @@ public abstract class FusionTaskBase extends TaskBase
 
     MutablePair<Boolean, ClearCLImage> lImageAndFlag =
                                                      pFastFusionEngine.ensureImageAllocated(mDestImageSlotKey,
-                                                                                            ImageChannelDataType.UnsignedInt16,
+                                                                                            mDestinationImageDataType,
                                                                                             lImageA.getDimensions());
     // Then we do the actual work:
 

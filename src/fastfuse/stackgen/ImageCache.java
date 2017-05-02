@@ -51,7 +51,10 @@ public class ImageCache
 
     pImage.copyTo(lBuffer, true);
 
-    File lFile = new File(new File(cCacheFolder, mName), pImageName);
+    File lFile = new File(new File(cCacheFolder, mName),
+                          pImageName + ".raw");
+
+    lFile.getParentFile().mkdirs();
 
     RandomAccessFile lRandomAccessFile = new RandomAccessFile(lFile,
                                                               "rw");
@@ -83,7 +86,8 @@ public class ImageCache
     ClearCLHostImageBuffer lBuffer =
                                    ClearCLHostImageBuffer.allocateSameAs(pImage);
 
-    File lFile = new File(new File(cCacheFolder, mName), pImageName);
+    File lFile = new File(new File(cCacheFolder, mName),
+                          pImageName + ".raw");
 
     RandomAccessFile lRandomAccessFile = new RandomAccessFile(lFile,
                                                               "rw");

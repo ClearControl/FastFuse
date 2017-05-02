@@ -2,6 +2,7 @@ package fastfuse.tasks;
 
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
+import clearcl.enums.ImageChannelDataType;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 
@@ -30,9 +31,13 @@ public class TenengradFusionTask extends FusionTaskBase
                              String pDestImageKey)
   {
     super(pImageASlotKey, pImageBSlotKey, pDestImageKey);
-    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace
-                                                                // with a new
-                                                                // file
+    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO:
+    // replace
+    // with a
+    // new
+    // file
+
+    mDestinationImageDataType = ImageChannelDataType.Float;
   }
 
   /**
@@ -61,9 +66,13 @@ public class TenengradFusionTask extends FusionTaskBase
           pImageCSlotKey,
           pImageDSlotKey,
           pDestImageSlotKey);
-    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO: replace
-                                                                // with a new
-                                                                // file
+    setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl"); // TODO:
+    // replace
+    // with a
+    // new
+    // file
+
+    mDestinationImageDataType = ImageChannelDataType.Float;
   }
 
   public boolean fuse(ClearCLImage lImageA,
@@ -79,22 +88,23 @@ public class TenengradFusionTask extends FusionTaskBase
 
     try
     {
-      // if you have setup the program (see above) then you can get a hold on
+      // if you have setup the program (see above) then you can get a hold
+      // on
       // the kernel as shown below:
       if (mInputImagesSlotKeys.length == 2)
         lKernel = getKernel(lImageFused.getContext(), "fuseavg2"); // TODO:
-                                                                   // replace
-                                                                   // with
-                                                                   // tenengrad
-                                                                   // kernel
-                                                                   // name
+      // replace
+      // with
+      // tenengrad
+      // kernel
+      // name
       else if (mInputImagesSlotKeys.length == 4)
         lKernel = getKernel(lImageFused.getContext(), "fuseavg4"); // TODO:
-                                                                   // replace
-                                                                   // with
-                                                                   // tenengrad
-                                                                   // kernel
-                                                                   // name
+      // replace
+      // with
+      // tenengrad
+      // kernel
+      // name
     }
     catch (Exception e)
     {
