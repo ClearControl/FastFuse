@@ -1,43 +1,520 @@
 package fastfuse.registration;
 
+import java.io.IOException;
+import java.nio.FloatBuffer;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Stack;
+import java.util.stream.LongStream;
+
 import javax.vecmath.Matrix4f;
+
+import clearcl.ClearCLBuffer;
+import clearcl.ClearCLContext;
+import clearcl.ClearCLImage;
+import clearcl.ClearCLKernel;
+import clearcl.ClearCLProgram;
+import clearcl.util.MatrixUtils;
+import coremem.enums.NativeTypeEnum;
+
+import org.apache.commons.lang3.reflect.FieldUtils;
+import org.apache.commons.math3.analysis.MultivariateFunction;
+import org.apache.commons.math3.exception.TooManyEvaluationsException;
+import org.apache.commons.math3.linear.ArrayRealVector;
+import org.apache.commons.math3.optim.InitialGuess;
+import org.apache.commons.math3.optim.MaxEval;
+import org.apache.commons.math3.optim.SimpleBounds;
+import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
+import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
+import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
 
 /**
  * Stack registration
  *
- * @author royer
+ * @author uschmidt
  */
 public class Registration
 {
-  private Matrix4f mInitialMatrix;
 
-  private int mMaxNumberOfIterations;
+  private static final List<String> KERNEL_NAMES =
+                                                 Arrays.asList("reduce_mean_1buffer",
+                                                               "reduce_mean_2buffer",
+                                                               "reduce_mean_2imagef",
+                                                               "reduce_var_1imagef",
+                                                               "affine_transform",
+                                                               "reduce_ncc_affine");
 
-  /**
-   * Sets the initial matrix used for registration
-   * 
-   * @param pInitialMatrix
-   *          initial matrix
-   */
-  public void setInitialTransformMatrix(Matrix4f pInitialMatrix)
+  private final ClearCLContext mContext;
+  private final Map<String, ClearCLKernel> mKernels;
+  private final RegistrationParameter mParams;
+
+  private long[] mGlobalSize, mLocalSize;
+  private final int mGroupSize;
+  private final Stack<Long> mBufferSizes = new Stack<>();
+
+  private ClearCLImage mImageA, mImageB;
+  private ClearCLBuffer[][] mBuffers;
+
+  private Matrix4f mMatCenterAndScale, mMatCenterAndScaleInverse;
+  private ClearCLBuffer mTransformMatrixBuffer;
+
+  /////////
+
+  public Registration(RegistrationParameter pParams,
+                      ClearCLImage pImageA,
+                      ClearCLImage pImageB)
   {
-    mInitialMatrix = pInitialMatrix;
+    mParams = pParams;
+    mContext = pImageA.getContext();
+    mGroupSize = mParams.getOpenCLGroupSize();
+    mKernels = getKernels(mGroupSize);
+    setSizeAndPrepare(pImageA.getDimensions());
+    setImages(pImageA, pImageB);
   }
 
-  /**
-   * Sets max number of iterations
-   * 
-   * @param pMaxNumberOfIterations
-   *          maximal numbr of iterations
-   */
-  public void setMaxNumberOfIterations(int pMaxNumberOfIterations)
+  public void setImages(ClearCLImage pImageA, ClearCLImage pImageB)
   {
-    mMaxNumberOfIterations = pMaxNumberOfIterations;
+    mImageA = pImageA;
+    mImageB = pImageB;
+    assert Arrays.equals(mImageA.getDimensions(),
+                         mImageB.getDimensions());
+    if (!hasDimensions(mImageA.getDimensions()))
+      setSizeAndPrepare(mImageA.getDimensions());
   }
 
-  public void register()
+  private void setSizeAndPrepare(final long... pGlobalSize)
   {
-    // TODO Auto-generated method stub
+    // set opencl size parameters
+    assert 3 == pGlobalSize.length;
+    mGlobalSize = pGlobalSize;
+    mLocalSize = computeLocalSize(mGroupSize, mGlobalSize);
 
+    // determine buffer sizes
+    mBufferSizes.clear();
+    mBufferSizes.push(mGlobalSize[0] * mGlobalSize[1]
+                      * mGlobalSize[2]);
+    while (mBufferSizes.peek() % mGroupSize == 0)
+      mBufferSizes.push(mBufferSizes.peek() / mGroupSize);
+
+    // close existing buffers if necessary
+    if (mBuffers != null)
+    {
+      for (int i = 0; i < mBuffers.length; i++)
+        for (int j = 0; j < mBuffers[i].length; j++)
+          mBuffers[i][j].close();
+    }
+
+    // create new buffers
+    int lNumReductions = mBufferSizes.size() - 1;
+    mBuffers = new ClearCLBuffer[lNumReductions][2];
+    for (int i = 0; i < lNumReductions; i++)
+      for (int j = 0; j < mBuffers[i].length; j++)
+        mBuffers[i][j] =
+                       mContext.createBuffer(NativeTypeEnum.Float,
+                                             mBufferSizes.get(1 + i));
+
+    // create fixed matrices for transformations
+    long cx = mGlobalSize[0] / 2, cy = mGlobalSize[1] / 2,
+        cz = mGlobalSize[2] / 2;
+    float sz = mParams.getScaleZ();
+    mMatCenterAndScale =
+                       AffineMatrix.multiply(AffineMatrix.scaling(1,
+                                                                  1,
+                                                                  sz),
+                                             AffineMatrix.translation(-cx,
+                                                                      -cy,
+                                                                      -cz));
+    mMatCenterAndScaleInverse = new Matrix4f();
+    mMatCenterAndScaleInverse.invert(mMatCenterAndScale);
   }
+
+  private static long[] computeLocalSize(final int pGroupSize,
+                                         final long... pGlobalSize)
+  {
+
+    // sanity checks
+    final int lGroupSizeExp = (int) (Math.log(pGroupSize)
+                                     / Math.log(2));
+    assert pGlobalSize.length == 3;
+    assert pGroupSize == Math.pow(2, lGroupSizeExp);
+    assert (pGlobalSize[0] * pGlobalSize[1] * pGlobalSize[2])
+           % pGroupSize == 0;
+
+    // ideal exponents of local sizes
+    long[] lExpsIdeal =
+    { 0, 0, 0 };
+    lExpsIdeal[0] = (long) Math.ceil(lGroupSizeExp / 3.0);
+    lExpsIdeal[1] = (long) Math.ceil((lGroupSizeExp - lExpsIdeal[0])
+                                     / 2.0);
+    lExpsIdeal[2] = lGroupSizeExp - lExpsIdeal[0] - lExpsIdeal[1];
+    // corresponding local sizes
+    long[] localSize = LongStream.of(lExpsIdeal)
+                                 .map(i -> (long) Math.pow(2, i))
+                                 .toArray();
+
+    // if (global) image sizes are not multiples of the ideal local sizes
+    if ((pGlobalSize[0] % localSize[0] != 0)
+        || (pGlobalSize[1] % localSize[1] != 0)
+        || (pGlobalSize[2] % localSize[2] != 0))
+    {
+
+      List<List<Integer>> lExpsCand = new ArrayList<>();
+      for (int i = 0; i < 3; i++)
+      {
+        lExpsCand.add(new ArrayList<>());
+        for (int e = lGroupSizeExp; e >= 0; e--)
+          if (pGlobalSize[i] % (int) Math.pow(2, e) == 0)
+            lExpsCand.get(i).add(e);
+      }
+
+      long[] lExpsChosen = null;
+      long minCost = Long.MAX_VALUE;
+      for (int i : lExpsCand.get(0))
+        for (int j : lExpsCand.get(1))
+          for (int k : lExpsCand.get(2))
+            if (lGroupSizeExp == i + j + k)
+            {
+              long cost = Math.abs(lExpsIdeal[0] - i)
+                          + Math.abs(lExpsIdeal[1] - j)
+                          + Math.abs(lExpsIdeal[2] - k);
+              if (cost < minCost)
+              {
+                minCost = cost;
+                lExpsChosen = new long[]
+                { i, j, k };
+              }
+            }
+
+      localSize =
+                LongStream.of(lExpsChosen)
+                          .map(i -> (long) Math.pow(2, i))
+                          .toArray();
+    }
+    return localSize;
+  }
+
+  public double[] register()
+  {
+
+    // TODO minor improvement: compute mean and variance in one kernel
+    float[] meansAB = reduceImageMeans();
+    float varA = reduceImageVar(mImageA, meansAB[0]);
+    // System.out.println(Arrays.toString(meansAB));
+    // System.out.println(varA);
+
+    MultivariateFunction J = new MultivariateFunction()
+    {
+      @Override
+      public double value(double[] theta)
+      {
+        float ncc = reduceNCCAffine(floatArray(theta), meansAB, varA);
+        return 1 - ncc;
+      }
+    };
+
+    // NLopt.NLopt_func Jnlopt = new NLopt.NLopt_func() {
+    // @Override
+    // public double execute(double[] theta, double[] gradient) {
+    // float ncc = reduceNccAffine(floatArray(theta), means, var1);
+    // return 1 - ncc;
+    // }
+    // };
+    // NLopt optimizer = new NLopt(NLopt.NLOPT_LN_BOBYQA, 6);
+    // optimizer.setLowerBounds(mParams.getLowerBounds());
+    // optimizer.setUpperBounds(mParams.getUpperBounds());
+    // optimizer.setMinObjective(Jnlopt);
+    // optimizer.setMaxEval(mParams.getMaxNumberOfEvaluations());
+
+    BOBYQAOptimizer lOptimizer = new BOBYQAOptimizer(2 * 6 + 1);
+    SimpleBounds lBounds = new SimpleBounds(mParams.getLowerBounds(),
+                                            mParams.getUpperBounds());
+
+    // current best solution is initialization
+    double[] initTheta = mParams.getInitialTransformation();
+    double[] bestTheta = initTheta;
+    double bestJ = J.value(bestTheta);
+
+    // find better registration
+    for (int i = 0; i < mParams.getNumberOfRestarts(); i++)
+    {
+      // start for optimization
+      double[] theta =
+                     0 == i ? initTheta
+                            : mParams.perturbTransformation(initTheta);
+      // System.out.printf("init ## %.6f: %s\n", J.value(theta),
+      // Arrays.toString(theta));
+
+      // double[] theta_nlopt = theta.clone();
+      // NLoptResult minf = optimizer.optimize(theta_nlopt);
+      // System.out.printf("nlopt - %.6f: %s\n", minf.minValue(),
+      // Arrays.toString(theta_nlopt));
+
+      /////////////////
+      try
+      {
+        lOptimizer.optimize(new MaxEval(mParams.getMaxNumberOfEvaluations()),
+                            new ObjectiveFunction(J),
+                            GoalType.MINIMIZE,
+                            lBounds,
+                            new InitialGuess(theta));
+      }
+      catch (TooManyEvaluationsException e)
+      {
+      }
+      double[] currentTheta = null;
+      try
+      {
+        currentTheta =
+                     ((ArrayRealVector) FieldUtils.readField(lOptimizer,
+                                                             "currentBest",
+                                                             true)).toArray();
+      }
+      catch (IllegalAccessException e)
+      {
+        e.printStackTrace();
+      }
+      /////////////////
+
+      double currentJ = J.value(currentTheta);
+      if (currentJ < bestJ)
+      {
+        bestJ = currentJ;
+        bestTheta = currentTheta.clone();
+      }
+
+      System.out.printf("run %d - %.6f: %s, iters = %d\n",
+                        i + 1,
+                        currentJ,
+                        Arrays.toString(currentTheta),
+                        lOptimizer.getEvaluations());
+    }
+    // System.out.printf("best = %.6f: %s\n", bestJ,
+    // Arrays.toString(bestTheta));
+    return bestTheta;
+  }
+
+  public void transform(ClearCLImage pImageTarget,
+                        ClearCLImage pImageSource,
+                        double... theta)
+  {
+    ClearCLKernel lKernel = mKernels.get("affine_transform");
+    lKernel.setArguments(pImageTarget,
+                         pImageSource,
+                         getTransformMatrixBuffer(floatArray(theta)));
+    lKernel.setGlobalSizes(mGlobalSize);
+    lKernel.run(mParams.getWaitToFinish());
+  }
+
+  private ClearCLBuffer getTransformMatrixBuffer(float... theta)
+  {
+    assert theta.length == 6;
+    Matrix4f lMatTranslate = AffineMatrix.translation(theta[0],
+                                                      theta[1],
+                                                      theta[2]);
+    Matrix4f lMatRotate = AffineMatrix.rotation(theta[3],
+                                                theta[4],
+                                                theta[5]);
+    Matrix4f lMatFinal =
+                       AffineMatrix.multiply(mMatCenterAndScaleInverse,
+                                             lMatTranslate,
+                                             lMatRotate,
+                                             mMatCenterAndScale);
+    // lMatFinal.invert();
+    mTransformMatrixBuffer = MatrixUtils.matrixToBuffer(mContext,
+                                                        mTransformMatrixBuffer,
+                                                        lMatFinal);
+    return mTransformMatrixBuffer;
+  }
+
+  private int checkBuffersAndGetReductionIndex(ClearCLBuffer... bufs)
+  {
+    assert bufs.length == 1 || bufs.length == 2;
+    long bufSize = bufs[0].getLength();
+    if (bufs.length == 2)
+      assert bufs[1].getLength() == bufSize;
+    for (int i = 0; i < mBufferSizes.size() - 1; i++)
+    {
+      if (mBufferSizes.get(i) == bufSize)
+        return i;
+    }
+    assert false;
+    return -1;
+  }
+
+  private float[] reduceMean(ClearCLBuffer... pBuffers)
+  {
+    int lNumReductions = mBufferSizes.size() - 1;
+    int s = checkBuffersAndGetReductionIndex(pBuffers);
+
+    ClearCLKernel lKernel;
+    switch (pBuffers.length)
+    {
+    case 1:
+      lKernel = mKernels.get("reduce_mean_1buffer");
+      lKernel.setArguments(mBuffers[s][0], pBuffers[0]);
+      lKernel.setGlobalSizes(mBufferSizes.get(s));
+      lKernel.setLocalSizes(mGroupSize);
+      lKernel.run(mParams.getWaitToFinish());
+      for (int i = s + 1; i < lNumReductions; i++)
+      {
+        lKernel.setArguments(mBuffers[s][0], mBuffers[i - 1][0]);
+        lKernel.setGlobalSizes(mBufferSizes.get(i));
+        lKernel.run(mParams.getWaitToFinish());
+      }
+      return new float[]
+      { reduceMeanOnHost(mBuffers[lNumReductions - 1][0]) };
+
+    case 2:
+      lKernel = mKernels.get("reduce_mean_2buffer");
+      lKernel.setArguments(mBuffers[s][0],
+                           pBuffers[0],
+                           mBuffers[s][1],
+                           pBuffers[1]);
+      lKernel.setGlobalSizes(mBufferSizes.get(s));
+      lKernel.setLocalSizes(mGroupSize);
+      lKernel.run(mParams.getWaitToFinish());
+      for (int i = s + 1; i < lNumReductions; i++)
+      {
+        lKernel.setArguments(mBuffers[i][0],
+                             mBuffers[i - 1][0],
+                             mBuffers[i][1],
+                             mBuffers[i - 1][1]);
+        lKernel.setGlobalSizes(mBufferSizes.get(i));
+        lKernel.run(mParams.getWaitToFinish());
+      }
+      return new float[]
+      { reduceMeanOnHost(mBuffers[lNumReductions - 1][0]),
+        reduceMeanOnHost(mBuffers[lNumReductions - 1][1]) };
+    default:
+      assert false;
+      return null;
+    }
+  }
+
+  private float reduceMeanOnHost(ClearCLBuffer pBuffer)
+  {
+    // transfer to host
+    int lBufferSize = (int) pBuffer.getLength();
+    // TODO: reuse FloatBuffer
+    FloatBuffer lHostBuffer = FloatBuffer.allocate(lBufferSize);
+    pBuffer.writeTo(lHostBuffer, true);
+    // naive summation (with double precision)
+    double lSum = 0;
+    for (int i = 0; i < lBufferSize; i++)
+    {
+      lSum += lHostBuffer.get(i);
+    }
+    return (float) (lSum / lBufferSize);
+  }
+
+  private float[] reduceImageMeans()
+  {
+    ClearCLKernel lKernel = mKernels.get("reduce_mean_2imagef");
+    lKernel.setArguments(mBuffers[0][0],
+                         mImageA,
+                         mBuffers[0][1],
+                         mImageB);
+    lKernel.setGlobalSizes(mGlobalSize);
+    lKernel.setLocalSizes(mLocalSize);
+    lKernel.run(mParams.getWaitToFinish());
+    return reduceMean(mBuffers[0][0], mBuffers[0][1]);
+  }
+
+  private float reduceImageVar(ClearCLImage pImage, float pMean)
+  {
+    ClearCLKernel lKernel = mKernels.get("reduce_var_1imagef");
+    lKernel.setArguments(mBuffers[0][0], pImage, pMean);
+    lKernel.setGlobalSizes(mGlobalSize);
+    lKernel.setLocalSizes(mLocalSize);
+    lKernel.run(mParams.getWaitToFinish());
+    return reduceMean(mBuffers[0][0])[0];
+  }
+
+  private float reduceNCCAffine(float[] theta,
+                                float[] means,
+                                float varA)
+  {
+    ClearCLKernel lKernel = mKernels.get("reduce_ncc_affine");
+    lKernel.setArguments(mBuffers[0][0],
+                         mBuffers[0][1],
+                         mImageA,
+                         mImageB,
+                         getTransformMatrixBuffer(theta),
+                         means[0],
+                         means[1]);
+    lKernel.setGlobalSizes(mGlobalSize);
+    lKernel.setLocalSizes(mLocalSize);
+    lKernel.run(mParams.getWaitToFinish());
+    float[] reds = reduceMean(mBuffers[0][0], mBuffers[0][1]);
+    float varB = reds[0], covAB = reds[1];
+    float ncc = (float) (covAB / (Math.sqrt(varA) * Math.sqrt(varB)));
+    return ncc;
+  }
+
+  private Map<String, ClearCLKernel> getKernels(int pGroupSize)
+  {
+    HashMap<String, ClearCLKernel> lKernels = null;
+    try
+    {
+      Class<?> lClassForKernel = mParams.getClassForKernelBasePath();
+      String lKernelSourceFile = mParams.getKernelSourceFile();
+      ClearCLProgram lProgram =
+                              mContext.createProgram(lClassForKernel,
+                                                     lKernelSourceFile);
+      lProgram.addDefine("MAX_GROUP_SIZE", pGroupSize);
+      lProgram.addBuildOptionAllMathOpt();
+      lProgram.buildAndLog();
+      lKernels = new HashMap<>();
+      for (String s : KERNEL_NAMES)
+      {
+        lKernels.put(s, lProgram.createKernel(s));
+      }
+    }
+    catch (IOException e)
+    {
+      // TODO Auto-generated catch block
+      e.printStackTrace();
+    }
+    return lKernels;
+  }
+
+  private static float[] floatArray(double[] d)
+  {
+    assert d != null;
+    float[] f = new float[d.length];
+    for (int i = 0; i < d.length; i++)
+    {
+      f[i] = (float) d[i];
+    }
+    return f;
+  }
+
+  private boolean hasDimensions(long... dims)
+  {
+    if (mGlobalSize == null || dims == null)
+      return false;
+    return Arrays.equals(mGlobalSize, dims);
+  }
+
+  @Override
+  public String toString()
+  {
+    return String.format("Registration:\n"
+                         + "-  global size = %4d, %4d, %4d\n"
+                         + "-   local size = %4d, %4d, %4d\n"
+                         + "-   group size = %d\n"
+                         + "- buffer sizes = %s\n",
+                         mGlobalSize[0],
+                         mGlobalSize[1],
+                         mGlobalSize[2],
+                         mLocalSize[0],
+                         mLocalSize[1],
+                         mLocalSize[2],
+                         mGroupSize,
+                         mBufferSizes.toString());
+  }
+
 }
