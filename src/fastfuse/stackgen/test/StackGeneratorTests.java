@@ -1,7 +1,6 @@
 package fastfuse.stackgen.test;
 
 import javax.vecmath.Matrix4f;
-import javax.vecmath.Vector3f;
 
 import clearcl.ClearCL;
 import clearcl.ClearCLContext;
@@ -19,7 +18,6 @@ import fastfuse.tasks.RegistrationTask;
 import fastfuse.tasks.TenengradFusionTask;
 
 import org.junit.Test;
-import simbryo.util.geom.GeometryUtils;
 
 /**
  * Stack generator tests
@@ -38,6 +36,9 @@ public class StackGeneratorTests
   @Test
   public void testGeneration() throws Exception
   {
+    // XXX: disable for now
+    if (true)
+      return;
 
     int lMaxCameraResolution = 1024;
 
@@ -89,6 +90,10 @@ public class StackGeneratorTests
   @Test
   public void testDummyAverageFusion() throws Exception
   {
+    // XXX: disable for now
+    if (true)
+      return;
+
     int lMaxCameraResolution = 1024;
 
     int lPhantomWidth = 320;
@@ -165,7 +170,7 @@ public class StackGeneratorTests
 
     boolean mUseCache = true;
 
-    int lMaxCameraResolution = 1024;
+    int lMaxCameraResolution = 256;
 
     int lStackDepth = 32;
 
@@ -173,7 +178,8 @@ public class StackGeneratorTests
     int lPhantomHeight = lPhantomWidth;
     int lPhantomDepth = lPhantomWidth;
 
-    ImageCache lCache = new ImageCache("testXWingFusion");
+    ImageCache lCache = new ImageCache("testXWingFusion-"
+                                       + lMaxCameraResolution);
 
     try (
         ClearCL lClearCL =
@@ -214,17 +220,11 @@ public class StackGeneratorTests
                                                                   "C1",
                                                                   "C1reg");
 
-      Matrix4f lMatrix = GeometryUtils.rotY((float) Math.PI,
-                                            new Vector3f(0.5f,
-                                                         0.5f,
-                                                         0.5f));
-      lRegisteredFusionTask.setInitialTransformMatrix(lMatrix);
-
       lFastFusionEngine.addTask(lRegisteredFusionTask);
 
       lFastFusionEngine.addTask(new TenengradFusionTask("C0",
                                                         "C1reg",
-                                                        "fused"));
+                                                        "C"));
 
       lStackGenerator.setCenteredROI(lMaxCameraResolution / 2,
                                      lMaxCameraResolution);
@@ -258,18 +258,13 @@ public class StackGeneratorTests
           lFastFusionEngine.passImage(lKey, lStack);
         }
 
-      // lFastFusionEngine.executeAllTasks();
+      lFastFusionEngine.executeAllTasks();
 
       ClearCLImageViewer lView =
-                               ClearCLImageViewer.view(lFastFusionEngine.getImage("C0L0"));
-
+                               ClearCLImageViewer.view(lFastFusionEngine.getImage("C"));
       lView.waitWhileShowing();
-    }
 
-    // mTransformMatrixBuffer =
-    // MatrixUtils.matrixToBuffer(mContext,
-    // mTransformMatrixBuffer,
-    // getPhantomTransformMatrix());
+    }
 
   }
 
