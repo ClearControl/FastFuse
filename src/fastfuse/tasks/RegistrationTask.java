@@ -58,12 +58,17 @@ public class RegistrationTask extends TaskBase implements
   // private static final double[] mUpperBnd = new double[] { +30, +30, +30,
   // +10, 190, +10 };
   //
-  private static final double PINF = Double.POSITIVE_INFINITY;
-  private static final double NINF = Double.NEGATIVE_INFINITY;
+  private static final double cTRadius = 20;
+  private static final double cRRadius = 10;
   private double[] mLowerBnd = new double[]
-  { NINF, NINF, NINF, NINF, NINF, NINF };
+  { -cTRadius,
+    -cTRadius,
+    -cTRadius,
+    -cRRadius,
+    -cRRadius,
+    -cRRadius };
   private double[] mUpperBnd = new double[]
-  { PINF, PINF, PINF, PINF, PINF, PINF };
+  { +cTRadius, +cTRadius, +cTRadius, cRRadius, cRRadius, cRRadius };
 
   // random perturbation offsets (+,-) for translation and rotation
   private static final int mRandRotPM = 5;
@@ -184,7 +189,7 @@ public class RegistrationTask extends TaskBase implements
     assert 6 == pUpperBound.length;
     mUpperBnd = pUpperBound;
   }
-  
+
   @Override
   public Matrix4f getZeroTransformMatrix()
   {
@@ -267,7 +272,5 @@ public class RegistrationTask extends TaskBase implements
   {
     mWaitToFinish = pWaitToFinish;
   }
-
-
 
 }

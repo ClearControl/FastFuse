@@ -19,8 +19,66 @@ public class FlipTask extends TaskBase implements TaskInterface
   private boolean mFlipX, mFlipY, mFlipZ;
 
   /**
-   * Instantiates an average fusion task given the keys for two input images and
+   * Instantiates stack X axis flip task given the keys for two input images and
    * destination image
+   * 
+   * @param pInputImageSlotKey
+   *          input image slot key
+   * @param pDestImageSlotKey
+   *          destination image slot key
+   * @return x axis flip task
+   */
+  public static FlipTask flipX(String pInputImageSlotKey,
+                               String pDestImageSlotKey)
+  {
+    FlipTask lFlipTask = new FlipTask(pInputImageSlotKey,
+                                      pDestImageSlotKey);
+    lFlipTask.setFlipX(true);
+    return lFlipTask;
+  }
+
+  /**
+   * Instantiates stack Y axis flip task given the keys for two input images and
+   * destination image
+   * 
+   * @param pInputImageSlotKey
+   *          input image slot key
+   * @param pDestImageSlotKey
+   *          destination image slot key
+   * @return y axis flip task
+   */
+  public static FlipTask flipY(String pInputImageSlotKey,
+                               String pDestImageSlotKey)
+  {
+    FlipTask lFlipTask = new FlipTask(pInputImageSlotKey,
+                                      pDestImageSlotKey);
+    lFlipTask.setFlipY(true);
+    return lFlipTask;
+  }
+
+  /**
+   * Instantiates stack Z flip task given the keys for two input images and
+   * destination image
+   * 
+   * @param pInputImageSlotKey
+   *          input image slot key
+   * @param pDestImageSlotKey
+   *          destination image slot key
+   * @return z axis flip task
+   * 
+   */
+  public static FlipTask flipZ(String pInputImageSlotKey,
+                               String pDestImageSlotKey)
+  {
+    FlipTask lFlipTask = new FlipTask(pInputImageSlotKey,
+                                      pDestImageSlotKey);
+    lFlipTask.setFlipZ(true);
+    return lFlipTask;
+  }
+
+  /**
+   * Instantiates stack X,Y,Z axis flip task given the keys for two input images
+   * and destination image
    * 
    * @param pInputImageSlotKey
    *          input image slot key
@@ -49,9 +107,9 @@ public class FlipTask extends TaskBase implements TaskInterface
                                     this);
 
     MutablePair<Boolean, ClearCLImage> lDestImageAndFlag =
-                                                     pFastFusionEngine.ensureImageAllocated(mDestImageSlotKey,
-                                                                                            lInputImage.getChannelDataType(),
-                                                                                            lInputImage.getDimensions());
+                                                         pFastFusionEngine.ensureImageAllocated(mDestImageSlotKey,
+                                                                                                lInputImage.getChannelDataType(),
+                                                                                                lInputImage.getDimensions());
 
     ClearCLImage lDestImage = lDestImageAndFlag.getValue();
 
