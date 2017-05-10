@@ -2,8 +2,6 @@ package fastfuse.stackgen.test;
 
 import javax.vecmath.Matrix4f;
 
-import org.junit.Test;
-
 import clearcl.ClearCL;
 import clearcl.ClearCLContext;
 import clearcl.ClearCLDevice;
@@ -19,6 +17,8 @@ import fastfuse.stackgen.StackGenerator;
 import fastfuse.tasks.AverageTask;
 import fastfuse.tasks.RegistrationTask;
 import fastfuse.tasks.TenengradFusionTask;
+
+import org.junit.Test;
 
 /**
  * Stack generator tests
@@ -242,34 +242,38 @@ public class StackGeneratorTests
       lStackGenerator.setLightSheetHeight(1.2f);
       lStackGenerator.setLightSheetIntensity(10f);
 
-      for (int c = 0; c < 2; c++)
-        for (int l = 0; l < 4; l++)
-        {
-          String lKey = String.format("C%dL%d", c, l);
-          ClearCLImage lStack;
-          if (mUseCache)
+      for (int t = 0; t < 100; t++)
+      {
+        lFastFusionEngine.reset(false);
+        for (int c = 0; c < 2; c++)
+          for (int l = 0; l < 4; l++)
           {
-            lStack =
-                   lContext.createSingleChannelImage(ImageChannelDataType.UnsignedInt16,
-                                                     lMaxCameraResolution / 2,
-                                                     lMaxCameraResolution,
-                                                     lStackDepth);
-            lCache.loadImage(lKey, lStack);
+            String lKey = String.format("C%dL%d", c, l);
+            ClearCLImage lStack;
+            if (mUseCache)
+            {
+              lStack =
+                     lContext.createSingleChannelImage(ImageChannelDataType.UnsignedInt16,
+                                                       lMaxCameraResolution / 2,
+                                                       lMaxCameraResolution,
+                                                       lStackDepth);
+              lCache.loadImage(lKey, lStack);
+            }
+            else
+            {
+              lStackGenerator.generateStack(c,
+                                            l,
+                                            -0.3f,
+                                            0.3f,
+                                            lStackDepth);
+              lStack = lStackGenerator.getStack();
+              lCache.saveImage(lKey, lStack);
+            }
+            lFastFusionEngine.passImage(lKey, lStack);
           }
-          else
-          {
-            lStackGenerator.generateStack(c,
-                                          l,
-                                          -0.3f,
-                                          0.3f,
-                                          lStackDepth);
-            lStack = lStackGenerator.getStack();
-            lCache.saveImage(lKey, lStack);
-          }
-          lFastFusionEngine.passImage(lKey, lStack);
-        }
 
-      lFastFusionEngine.executeAllTasks();
+        lFastFusionEngine.executeAllTasks();
+      }
 
       lCache.saveImage("C0", lFastFusionEngine.getImage("C0"));
       lCache.saveImage("C1", lFastFusionEngine.getImage("C1"));

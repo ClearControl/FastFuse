@@ -1,10 +1,10 @@
 package fastfuse.tasks;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
 import clearcl.enums.ImageChannelDataType;
+
+import org.apache.commons.lang3.tuple.MutablePair;
 
 /**
  * Fuses two stacks by weighted average, the weights are obtained by computing

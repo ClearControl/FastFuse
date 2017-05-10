@@ -2,14 +2,14 @@ package fastfuse.tasks;
 
 import javax.vecmath.Matrix4f;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-
 import clearcl.ClearCLBuffer;
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
 import clearcl.util.MatrixUtils;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.FastFusionException;
+
+import org.apache.commons.lang3.tuple.MutablePair;
 import simbryo.util.geom.GeometryUtils;
 
 /**

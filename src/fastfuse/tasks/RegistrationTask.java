@@ -2,13 +2,13 @@ package fastfuse.tasks;
 
 import javax.vecmath.Matrix4f;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.math3.random.RandomDataGenerator;
-
 import clearcl.ClearCLImage;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.registration.Registration;
 import fastfuse.registration.RegistrationParameter;
+
+import org.apache.commons.lang3.tuple.MutablePair;
+import org.apache.commons.math3.random.RandomDataGenerator;
 import simbryo.util.geom.GeometryUtils;
 
 /**
@@ -47,32 +47,23 @@ public class RegistrationTask extends TaskBase implements
   // rotation angles in degrees around center of volume
   private double[] mInitTransform = new double[]
   { 0, 0, 0, 0, 0, 0 };
-  // bounds for transformation parameters
-  // private static final double[] mLowerBnd = new double[] { -30, -30, -30,
-  // -10, -10, -10 };
-  // private static final double[] mUpperBnd = new double[] { +30, +30, +30,
-  // +10, +10, +10 };
-  // private double[] mInitTransform = new double[] { 0, 0, 0, 0, 180, 0 };
-  // private static final double[] mLowerBnd = new double[] { -30, -30, -30,
-  // -10, 170, -10 };
-  // private static final double[] mUpperBnd = new double[] { +30, +30, +30,
-  // +10, 190, +10 };
-  //
-  private static final double cTRadius = 20;
-  private static final double cRRadius = 10;
-  private double[] mLowerBnd = new double[]
-  { -cTRadius,
-    -cTRadius,
-    -cTRadius,
-    -cRRadius,
-    -cRRadius,
-    -cRRadius };
-  private double[] mUpperBnd = new double[]
-  { +cTRadius, +cTRadius, +cTRadius, cRRadius, cRRadius, cRRadius };
 
-  // random perturbation offsets (+,-) for translation and rotation
-  private static final int mRandRotPM = 5;
-  private static final int mRandTransPM = 30;
+  private static final double cTranslationRadius = 20;
+  private static final double cRotationRadius = 10;
+  private double[] mLowerBnd = new double[]
+  { -cTranslationRadius,
+    -cTranslationRadius,
+    -cTranslationRadius,
+    -cRotationRadius,
+    -cRotationRadius,
+    -cRotationRadius };
+  private double[] mUpperBnd = new double[]
+  { +cTranslationRadius,
+    +cTranslationRadius,
+    +cTranslationRadius,
+    cRotationRadius,
+    cRotationRadius,
+    cRotationRadius };
 
   ///////////////////////////////////////////////////////////////////////////
 
@@ -250,16 +241,16 @@ public class RegistrationTask extends TaskBase implements
   public double[] perturbTransformation(double... theta)
   {
     assert theta.length == 6;
-    double[] perturbed = new double[theta.length];
+    double[] lPerturbedTheta = new double[theta.length];
     double[] lb = getLowerBounds(), ub = getUpperBounds();
     for (int i = 0; i < theta.length; i++)
     {
-      int c = i < 3 ? mRandTransPM : mRandRotPM;
-      perturbed[i] = theta[i] + mRNG.nextUniform(-c, c);
-      perturbed[i] = Math.max(lb[i], perturbed[i]);
-      perturbed[i] = Math.min(ub[i], perturbed[i]);
+      double c = i < 3 ? cTranslationRadius : cRotationRadius;
+      lPerturbedTheta[i] = theta[i] + mRNG.nextUniform(-c, c);
+      lPerturbedTheta[i] = Math.max(lb[i], lPerturbedTheta[i]);
+      lPerturbedTheta[i] = Math.min(ub[i], lPerturbedTheta[i]);
     }
-    return perturbed;
+    return lPerturbedTheta;
   }
 
   @Override

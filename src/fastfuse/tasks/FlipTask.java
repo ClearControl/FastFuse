@@ -1,11 +1,11 @@
 package fastfuse.tasks;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.FastFusionException;
+
+import org.apache.commons.lang3.tuple.MutablePair;
 
 /**
  * Fuses two stacks using the average method.

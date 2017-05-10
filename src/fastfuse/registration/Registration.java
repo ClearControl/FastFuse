@@ -246,9 +246,10 @@ public class Registration
     for (int i = 0; i < mParams.getNumberOfRestarts(); i++)
     {
       // start for optimization
-      double[] theta =
-                     0 == i ? initTheta
-                            : mParams.perturbTransformation(initTheta);
+      double[] theta = 0 == i ? initTheta
+                              : randomSearch(J, initTheta, 30);
+      // mParams.perturbTransformation(initTheta);
+
       // System.out.printf("init ## %.6f: %s\n", J.value(theta),
       // Arrays.toString(theta));
 
@@ -301,6 +302,28 @@ public class Registration
     return bestTheta;
   }
 
+  private double[] randomSearch(MultivariateFunction J,
+                                double[] pInitTheta,
+                                int pNumberOfSamples)
+  {
+    double lBestJ = Double.POSITIVE_INFINITY;
+    double[] lBestTheta = pInitTheta;
+    for (int i = 0; i < pNumberOfSamples; i++)
+    {
+      // System.out.println(i);
+      double[] lTheta = mParams.perturbTransformation(pInitTheta);
+      double j = J.value(lTheta);
+      if (j < lBestJ)
+      {
+        lBestTheta = lTheta;
+        lBestJ = j;
+        // System.out.println(lBestJ);
+      }
+    }
+
+    return lBestTheta;
+  }
+
   public void transform(ClearCLImage pImageTarget,
                         ClearCLImage pImageSource,
                         double... theta)
@@ -316,7 +339,6 @@ public class Registration
   private ClearCLBuffer getTransformMatrixBuffer(float... theta)
   {
     assert theta.length == 6;
-
 
     Matrix4f lMatTranslate = AffineMatrix.translation(theta[0],
                                                       theta[1],
