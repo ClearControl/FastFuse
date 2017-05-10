@@ -61,6 +61,7 @@ public class AverageTask extends FusionTaskBase
     setupProgram(FusionTaskBase.class, "./kernels/fuseavg.cl");
   }
 
+  @Override
   public boolean fuse(ClearCLImage lImageA,
                       ClearCLImage lImageB,
                       ClearCLImage lImageC,

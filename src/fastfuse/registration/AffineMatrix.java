@@ -6,46 +6,80 @@ import javax.vecmath.Vector3f;
 /**
  * Helper functions for affine matrix construction
  * 
- * @author uschmidt
+ * @author uschmidt, royer
  */
 
-public class AffineMatrix {
+public class AffineMatrix
+{
 
-	public static Matrix4f translation(float... tr) {
-		assert tr.length == 3;
-		Matrix4f M = new Matrix4f();
-		M.setIdentity();
-		M.setTranslation(new Vector3f(tr));
-		return M;
-	}
+  /**
+   * Returns a translation matrix
+   * 
+   * @param pTranslationVector
+   *          translation matrix
+   * @return transation matrix
+   */
+  public static Matrix4f translation(float... pTranslationVector)
+  {
+    assert pTranslationVector.length == 3;
+    Matrix4f lMatrix = new Matrix4f();
+    lMatrix.setIdentity();
+    lMatrix.setTranslation(new Vector3f(pTranslationVector));
+    return lMatrix;
+  }
 
-	public static Matrix4f scaling(float... sc) {
-		assert sc.length == 3;
-		Matrix4f M = new Matrix4f();
-		M.setIdentity();
-		M.setElement(0, 0, sc[0]);
-		M.setElement(1, 1, sc[1]);
-		M.setElement(2, 2, sc[2]);
-		return M;
-	}
+  /**
+   * Returns a scaling matrix given the diagonal
+   * 
+   * @param pScalingVector
+   *          scaling vector (diagonal)
+   * @return scaling matrix
+   */
+  public static Matrix4f scaling(float... pScalingVector)
+  {
+    assert pScalingVector.length == 3;
+    Matrix4f lMatrix = new Matrix4f();
+    lMatrix.setIdentity();
+    lMatrix.setElement(0, 0, pScalingVector[0]);
+    lMatrix.setElement(1, 1, pScalingVector[1]);
+    lMatrix.setElement(2, 2, pScalingVector[2]);
+    return lMatrix;
+  }
 
-	public static Matrix4f rotation(float... ro) {
-		Matrix4f Rx = new Matrix4f();
-		Rx.rotX((float) Math.toRadians(ro[0]));
-		Matrix4f Ry = new Matrix4f();
-		Ry.rotY((float) Math.toRadians(ro[1]));
-		Matrix4f Rz = new Matrix4f();
-		Rz.rotZ((float) Math.toRadians(ro[2]));
-		return multiply(Rz, Ry, Rx);
-	}
+  /**
+   * Returns a rotation matrix given the rotation angles in degrees around the
+   * X, Y and Z axis.
+   * 
+   * @param pXYZRotationAnglesInDegrees
+   *          rotation angles in degrees along the X, Y and Z axis.
+   * @return rotation matrix
+   */
+  public static Matrix4f rotation(float... pXYZRotationAnglesInDegrees)
+  {
+    Matrix4f Rx = new Matrix4f();
+    Rx.rotX((float) Math.toRadians(pXYZRotationAnglesInDegrees[0]));
+    Matrix4f Ry = new Matrix4f();
+    Ry.rotY((float) Math.toRadians(pXYZRotationAnglesInDegrees[1]));
+    Matrix4f Rz = new Matrix4f();
+    Rz.rotZ((float) Math.toRadians(pXYZRotationAnglesInDegrees[2]));
+    return multiply(Rz, Ry, Rx);
+  }
 
-	public static Matrix4f multiply(Matrix4f... pMats) {
-		Matrix4f R = new Matrix4f();
-		R.setIdentity();
-		for (Matrix4f M : pMats) {
-			R.mul(M);
-		}
-		return R;
-	}
+  /**
+   * Multiples the given matrices
+   * 
+   * @param pMatrices
+   *          matrices
+   * @return product matrix
+   */
+  public static Matrix4f multiply(Matrix4f... pMatrices)
+  {
+    Matrix4f lProductMatrix = new Matrix4f();
+    lProductMatrix.setIdentity();
+    for (Matrix4f lMatrix : pMatrices)
+      lProductMatrix.mul(lMatrix);
+
+    return lProductMatrix;
+  }
 
 }

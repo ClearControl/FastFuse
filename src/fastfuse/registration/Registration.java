@@ -61,8 +61,13 @@ public class Registration
   private Matrix4f mMatCenterAndScale, mMatCenterAndScaleInverse;
   private ClearCLBuffer mTransformMatrixBuffer;
 
-  /////////
-
+  /**
+   * Instantiates a stack registration class given two images
+   * 
+   * @param pParams
+   * @param pImageA
+   * @param pImageB
+   */
   public Registration(RegistrationParameter pParams,
                       ClearCLImage pImageA,
                       ClearCLImage pImageB)
@@ -311,6 +316,8 @@ public class Registration
   private ClearCLBuffer getTransformMatrixBuffer(float... theta)
   {
     assert theta.length == 6;
+
+
     Matrix4f lMatTranslate = AffineMatrix.translation(theta[0],
                                                       theta[1],
                                                       theta[2]);
@@ -319,6 +326,7 @@ public class Registration
                                                 theta[5]);
     Matrix4f lMatFinal =
                        AffineMatrix.multiply(mMatCenterAndScaleInverse,
+                                             mParams.getZeroTransformMatrix(),
                                              lMatTranslate,
                                              lMatRotate,
                                              mMatCenterAndScale);

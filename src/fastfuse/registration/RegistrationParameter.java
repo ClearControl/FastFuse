@@ -1,5 +1,7 @@
 package fastfuse.registration;
 
+import javax.vecmath.Matrix4f;
+
 /**
  * Interface for registration parameter
  * 
@@ -36,10 +38,16 @@ public interface RegistrationParameter {
 
 	public double[] getInitialTransformation();
 
+  public void  setZeroTransformMatrix(Matrix4f pZeroTransformMatrix);
+	
+  public Matrix4f getZeroTransformMatrix();
+	
 	public void setInitialTransformation(double... theta);
 
 	public int getNumberOfRestarts();
 
 	public void setNumberOfRestarts(int pRestarts);
+
+
 
 }
