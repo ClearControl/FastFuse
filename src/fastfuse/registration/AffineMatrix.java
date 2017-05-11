@@ -13,6 +13,18 @@ public class AffineMatrix
 {
 
   /**
+   * Returns an identity matrix
+   * 
+   * @return identity matrix
+   */
+  public static Matrix4f identity()
+  {
+    Matrix4f lMatrix = new Matrix4f();
+    lMatrix.setIdentity();
+    return lMatrix;
+  }
+
+  /**
    * Returns a translation matrix
    * 
    * @param pTranslationVector
@@ -22,8 +34,7 @@ public class AffineMatrix
   public static Matrix4f translation(float... pTranslationVector)
   {
     assert pTranslationVector.length == 3;
-    Matrix4f lMatrix = new Matrix4f();
-    lMatrix.setIdentity();
+    Matrix4f lMatrix = identity();
     lMatrix.setTranslation(new Vector3f(pTranslationVector));
     return lMatrix;
   }
@@ -38,8 +49,7 @@ public class AffineMatrix
   public static Matrix4f scaling(float... pScalingVector)
   {
     assert pScalingVector.length == 3;
-    Matrix4f lMatrix = new Matrix4f();
-    lMatrix.setIdentity();
+    Matrix4f lMatrix = identity();
     lMatrix.setElement(0, 0, pScalingVector[0]);
     lMatrix.setElement(1, 1, pScalingVector[1]);
     lMatrix.setElement(2, 2, pScalingVector[2]);
@@ -74,8 +84,7 @@ public class AffineMatrix
    */
   public static Matrix4f multiply(Matrix4f... pMatrices)
   {
-    Matrix4f lProductMatrix = new Matrix4f();
-    lProductMatrix.setIdentity();
+    Matrix4f lProductMatrix = identity();
     for (Matrix4f lMatrix : pMatrices)
       lProductMatrix.mul(lMatrix);
 

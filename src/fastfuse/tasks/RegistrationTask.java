@@ -4,12 +4,12 @@ import javax.vecmath.Matrix4f;
 
 import clearcl.ClearCLImage;
 import fastfuse.FastFusionEngineInterface;
+import fastfuse.registration.AffineMatrix;
 import fastfuse.registration.Registration;
 import fastfuse.registration.RegistrationParameter;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.math3.random.RandomDataGenerator;
-import simbryo.util.geom.GeometryUtils;
 
 /**
  * Stack registration. This task takes two images, and applies an affine
@@ -31,17 +31,14 @@ public class RegistrationTask extends TaskBase implements
   // must be a power of 2
   private static final int mGroupSize = 128;
 
-  // wait for opencl kernels to finish
-  private boolean mWaitToFinish = false;
-
   // number of optimization trials with random restarts
-  private int mNumberOfRestarts = 5;
+  private int mNumberOfRestarts = 4;
   // stop each optimization run after this many function evaluations
   private int mMaxNumberOfEvaluations = 200;
   // voxel scale in z direction (relative to scale 1 for both x and y)
   private float mScaleZ = 4;
 
-  private Matrix4f mZeroTransformMatrix = GeometryUtils.getIdentity();
+  private Matrix4f mZeroTransformMatrix = AffineMatrix.identity();
 
   // initial transformation (transX, transY, transZ, rotX, rotY, rotZ)
   // rotation angles in degrees around center of volume
@@ -68,6 +65,7 @@ public class RegistrationTask extends TaskBase implements
   ///////////////////////////////////////////////////////////////////////////
 
   private final RandomDataGenerator mRNG = new RandomDataGenerator();
+  private boolean mWaitToFinish = true;
   private String[] mInputImagesSlotKeys;
   private String mTransformedImageSlotKey;
   private Registration mRegistration;
@@ -134,6 +132,7 @@ public class RegistrationTask extends TaskBase implements
   @Override
   public void setMaxNumberOfEvaluations(int pMaxNumberOfEvaluations)
   {
+    assert pMaxNumberOfEvaluations > 0;
     mMaxNumberOfEvaluations = pMaxNumberOfEvaluations;
   }
 
@@ -152,6 +151,7 @@ public class RegistrationTask extends TaskBase implements
   @Override
   public void setScaleZ(float pScaleZ)
   {
+    assert pScaleZ > 0;
     mScaleZ = pScaleZ;
   }
 
@@ -227,7 +227,7 @@ public class RegistrationTask extends TaskBase implements
   @Override
   public void setNumberOfRestarts(int pRestarts)
   {
-    assert pRestarts > 0 && pRestarts < 50;
+    assert pRestarts >= 0 && pRestarts < 50;
     mNumberOfRestarts = pRestarts;
   }
 
