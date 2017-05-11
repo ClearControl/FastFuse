@@ -176,15 +176,15 @@ public class Registration
       }
 
       long[] lExpsChosen = null;
-      long minCost = Long.MAX_VALUE;
+      double minCost = Double.POSITIVE_INFINITY;
       for (int i : lExpsCand.get(0))
         for (int j : lExpsCand.get(1))
           for (int k : lExpsCand.get(2))
             if (lGroupSizeExp == i + j + k)
             {
-              long cost = Math.abs(lExpsIdeal[0] - i)
-                          + Math.abs(lExpsIdeal[1] - j)
-                          + Math.abs(lExpsIdeal[2] - k);
+              double cost = Math.pow(lExpsIdeal[0] - i, 2)
+                            + Math.pow(lExpsIdeal[1] - j, 2)
+                            + Math.pow(lExpsIdeal[2] - k, 2);
               if (cost < minCost)
               {
                 minCost = cost;
@@ -243,7 +243,7 @@ public class Registration
     double bestJ = J.value(bestTheta);
 
     // find better registration
-    for (int i = 0; i < mParams.getNumberOfRestarts(); i++)
+    for (int i = 0; i < 1 + mParams.getNumberOfRestarts(); i++)
     {
       // start for optimization
       double[] theta = 0 == i ? initTheta
