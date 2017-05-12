@@ -225,6 +225,7 @@ public class StackGeneratorTests
       RegistrationTask lRegisteredFusionTask =
                                              new RegistrationTask("C0",
                                                                   "C1",
+                                                                  "C1",
                                                                   "C1reg");
       lRegisteredFusionTask.setZeroTransformMatrix(AffineMatrix.scaling(-1,
                                                                         1,

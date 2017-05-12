@@ -83,10 +83,10 @@ public class Registration
 
   public void setImages(ClearCLImage pImageA, ClearCLImage pImageB)
   {
+    assert Arrays.equals(pImageA.getDimensions(),
+                         pImageB.getDimensions());
     mImageA = pImageA;
     mImageB = pImageB;
-    assert Arrays.equals(mImageA.getDimensions(),
-                         mImageB.getDimensions());
     if (!hasDimensions(mImageA.getDimensions()))
       setSizeAndPrepare(mImageA.getDimensions());
   }
@@ -140,7 +140,6 @@ public class Registration
   private static long[] computeLocalSize(final int pGroupSize,
                                          final long... pGlobalSize)
   {
-
     // sanity checks
     final int lGroupSizeExp = (int) (Math.log(pGroupSize)
                                      / Math.log(2));
@@ -204,7 +203,6 @@ public class Registration
 
   public double[] register()
   {
-
     final float[] meansAB = reduceImageMeans();
     final float varA = reduceImageVar(mImageA, meansAB[0]);
     // System.out.println(Arrays.toString(meansAB));
@@ -370,10 +368,8 @@ public class Registration
     for (int i = 1; i < bufs.length; i++)
       assert bufs[i].getLength() == bufSize;
     for (int i = 0; i < mBufferSizes.size() - 1; i++)
-    {
       if (mBufferSizes.get(i) == bufSize)
         return i;
-    }
     assert false;
     return -1;
   }
@@ -500,6 +496,8 @@ public class Registration
                                 float varA,
                                 float meanBapprox)
   {
+    // approach:
+    // https://en.wikipedia.org/wiki/Algorithms_for_calculating_variance#Computing_shifted_data
     ClearCLKernel lKernel = mKernels.get("reduce_ncc_affine");
     lKernel.setArguments(mBuffers[0][0],
                          mBuffers[0][1],

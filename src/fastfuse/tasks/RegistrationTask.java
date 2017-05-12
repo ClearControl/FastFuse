@@ -27,11 +27,12 @@ public class RegistrationTask extends TaskBase implements
   // (DEFAULT) PARAMETERS
   ///////////////////////////////////////////////////////////////////////////
 
-  // at most 256 (or what's specified in the opencl source file)
-  // must be a power of 2
+  // must be a power of 2; number of voxels must be evenly divisible by this
+  // suggested: 128 or 256; max value limited by the GPU (e.g., 1024)
+  // ideally: number of voxels even divisible by this more than once
   private static final int mGroupSize = 128;
 
-  // number of optimization trials with random restarts
+  // number of additional optimization trials with random restarts
   private int mNumberOfRestarts = 4;
   // stop each optimization run after this many function evaluations
   private int mMaxNumberOfEvaluations = 200;
@@ -47,20 +48,20 @@ public class RegistrationTask extends TaskBase implements
 
   private static final double cTranslationRadius = 20;
   private static final double cRotationRadius = 10;
-  private double[] mLowerBnd = new double[]
+  private double[] mLowerBound = new double[]
   { -cTranslationRadius,
     -cTranslationRadius,
     -cTranslationRadius,
     -cRotationRadius,
     -cRotationRadius,
     -cRotationRadius };
-  private double[] mUpperBnd = new double[]
+  private double[] mUpperBound = new double[]
   { +cTranslationRadius,
     +cTranslationRadius,
     +cTranslationRadius,
-    cRotationRadius,
-    cRotationRadius,
-    cRotationRadius };
+    +cRotationRadius,
+    +cRotationRadius,
+    +cRotationRadius };
 
   ///////////////////////////////////////////////////////////////////////////
 
@@ -74,20 +75,23 @@ public class RegistrationTask extends TaskBase implements
    * Instantiates a registered fusion task
    * 
    * @param pImageASlotKey
-   *          first stack
+   *          first stack (reference volume for registration)
    * @param pImageBSlotKey
-   *          second stack
+   *          second stack (volume to be registered to reference volume)
+   * @param pImageCSlotKey
+   *          stack to be transformed after registration has been found
    * @param pImageBTransformedKey
-   *          transformed stack
+   *          transformed version of pImageCSlotKey
    */
   public RegistrationTask(String pImageASlotKey,
                           String pImageBSlotKey,
-                          String pImageBTransformedKey)
+                          String pImageCSlotKey,
+                          String pImageCTransformedKey)
   {
-    super(pImageASlotKey, pImageBSlotKey);
+    super(pImageASlotKey, pImageBSlotKey, pImageCSlotKey);
     mInputImagesSlotKeys = new String[]
-    { pImageASlotKey, pImageBSlotKey };
-    mTransformedImageSlotKey = pImageBTransformedKey;
+    { pImageASlotKey, pImageBSlotKey, pImageCSlotKey };
+    mTransformedImageSlotKey = pImageCTransformedKey;
   }
 
   @Override
@@ -96,9 +100,10 @@ public class RegistrationTask extends TaskBase implements
   {
     setWaitToFinish(pWaitToFinish);
 
-    ClearCLImage lImageA, lImageB;
+    ClearCLImage lImageA, lImageB, lImageC;
     lImageA = pFastFusionEngine.getImage(mInputImagesSlotKeys[0]);
     lImageB = pFastFusionEngine.getImage(mInputImagesSlotKeys[1]);
+    lImageC = pFastFusionEngine.getImage(mInputImagesSlotKeys[2]);
 
     if (mRegistration == null)
       mRegistration = new Registration(this, lImageA, lImageB);
@@ -106,10 +111,19 @@ public class RegistrationTask extends TaskBase implements
 
     System.out.println(mRegistration);
 
-    // find best registration
-    double[] lBestTransform = mRegistration.register();
-    // and use as initial transform for next time
-    setInitialTransformation(lBestTransform);
+    double[] lBestTransform = getInitialTransformation();
+    try
+    {
+      // find best registration
+      lBestTransform = mRegistration.register();
+      // and use as initial transform for next time
+      setInitialTransformation(lBestTransform);
+    }
+    catch (Throwable e)
+    {
+      System.err.println("Finding an updated volume registration failed (using last best transformation parameters instead).\n");
+      e.printStackTrace();
+    }
 
     MutablePair<Boolean, ClearCLImage> lFlagAndRegisteredImage =
                                                                pFastFusionEngine.ensureImageAllocated(mTransformedImageSlotKey,
@@ -119,7 +133,7 @@ public class RegistrationTask extends TaskBase implements
     ClearCLImage lRegisteredImage =
                                   lFlagAndRegisteredImage.getRight();
     mRegistration.transform(lRegisteredImage,
-                            lImageB,
+                            lImageC,
                             lBestTransform);
     lFlagAndRegisteredImage.setLeft(true);
     return true;
@@ -158,27 +172,27 @@ public class RegistrationTask extends TaskBase implements
   @Override
   public double[] getUpperBounds()
   {
-    return mUpperBnd;
+    return mUpperBound;
   }
 
   @Override
   public double[] getLowerBounds()
   {
-    return mLowerBnd;
+    return mLowerBound;
   }
 
   @Override
   public void setLowerBounds(double[] pLowerBound)
   {
     assert 6 == pLowerBound.length;
-    mLowerBnd = pLowerBound;
+    mLowerBound = pLowerBound;
   }
 
   @Override
   public void setUpperBounds(double[] pUpperBound)
   {
     assert 6 == pUpperBound.length;
-    mUpperBnd = pUpperBound;
+    mUpperBound = pUpperBound;
   }
 
   @Override
