@@ -67,7 +67,50 @@ __kernel void reduce_mean_2buffer(__global float* dst1, __global const float* sr
 }
 
 
-__kernel void reduce_ncc_affine(__global float* var2, __global float* cov, __read_only image3d_t src1, __read_only image3d_t src2, __constant float* mat, const float m1, const float m2) {
+__kernel void reduce_mean_3buffer(__global float* dst1, __global const float* src1, __global float* dst2, __global const float* src2, __global float* dst3, __global const float* src3) {
+
+  const int gid = get_global_id(0), lid = get_local_id(0);
+  __local float sdata1[MAX_GROUP_SIZE]; // shared local memory of work group
+  __local float sdata2[MAX_GROUP_SIZE]; // shared local memory of work group
+  __local float sdata3[MAX_GROUP_SIZE]; // shared local memory of work group 
+
+  const uint group_size = get_local_size(0);
+  /*
+  if (0==gid && group_size > MAX_GROUP_SIZE) {
+    printf("ERROR: local_size too big (%d > %d)\n", group_size, MAX_GROUP_SIZE);
+  }
+  */ 
+
+  // copy from global to local memory, wait until all work items done
+  sdata1[lid] = src1[gid];
+  sdata2[lid] = src2[gid];
+  sdata3[lid] = src3[gid];
+  barrier(CLK_LOCAL_MEM_FENCE);
+
+  // tree-based averaging of all values in the work group
+  for(int offset=group_size/2;  offset > 0;  offset /= 2) {
+    if (lid < offset) {
+      sdata1[lid] += sdata1[lid + offset];
+      sdata2[lid] += sdata2[lid + offset];
+      sdata3[lid] += sdata3[lid + offset];
+    }
+    barrier(CLK_LOCAL_MEM_FENCE);
+  }
+
+  // write result for this work group
+  if (lid == 0) {
+    const int grid = get_group_id(0);
+    dst1[grid] = sdata1[0] / group_size;
+    dst2[grid] = sdata2[0] / group_size;
+    dst3[grid] = sdata3[0] / group_size;
+  }
+}
+
+
+__kernel void reduce_ncc_affine(
+  __global float* meanB, __global float* meanBB, __global float* meanAB,
+  __read_only image3d_t imageA, __read_only image3d_t imageB, __constant float* mat,
+  const float meanB_assumed) {
 
   const uint i = get_global_id(0), j = get_global_id(1), k = get_global_id(2);
   
@@ -75,8 +118,8 @@ __kernel void reduce_ncc_affine(__global float* var2, __global float* cov, __rea
   const float y = i*mat[4] + j*mat[5] + k*mat[6]  + mat[7];
   const float z = i*mat[8] + j*mat[9] + k*mat[10] + mat[11];
 
-  const float pix1 = read_imagef(src1,sampler_nearest,(int4)(i,j,k,0)).x;
-  const float pix2 = read_imagef(src2,sampler_linear,(float4)(0.5f+x,0.5f+y,0.5f+z,0)).x;
+  const float pixA =                  read_imagef(imageA,sampler_nearest,(int4)(i,j,k,0)).x;
+  const float pixB = -meanB_assumed + read_imagef(imageB,sampler_linear,(float4)(0.5f+x,0.5f+y,0.5f+z,0)).x;
   
   const uint4 lsz = (uint4)(get_local_size(0),get_local_size(1),get_local_size(2),0);
   const uint  group_size = lsz.x * lsz.y * lsz.z;
@@ -88,19 +131,22 @@ __kernel void reduce_ncc_affine(__global float* var2, __global float* cov, __rea
 
   const int lid = get_local_id(0) + lsz.x*get_local_id(1) + lsz.x*lsz.y*get_local_id(2);
 
-  __local float svar2[MAX_GROUP_SIZE]; // shared local memory of work group
-  __local float scov[MAX_GROUP_SIZE]; // shared local memory of work group
+  __local float smeanB[MAX_GROUP_SIZE]; // shared local memory of work group
+  __local float smeanBB[MAX_GROUP_SIZE]; // shared local memory of work group
+  __local float smeanAB[MAX_GROUP_SIZE]; // shared local memory of work group
 
   // copy from global to local memory, wait until all work items done
-  svar2[lid] = (pix2-m2)*(pix2-m2);
-  scov[lid]  = (pix1-m1)*(pix2-m2);
+  smeanB[lid]  = pixB;
+  smeanBB[lid] = pixB*pixB;
+  smeanAB[lid] = pixA*pixB;
   barrier(CLK_LOCAL_MEM_FENCE);
 
   // tree-based averaging all values in the work group
   for(int offset=group_size/2;  offset > 0;  offset /= 2) {
     if (lid < offset) {
-      svar2[lid] += svar2[lid+offset];
-      scov[lid]  += scov[lid+offset];
+      smeanB[lid]  += smeanB[lid+offset];
+      smeanBB[lid] += smeanBB[lid+offset];
+      smeanAB[lid] += smeanAB[lid+offset];
     }
     barrier(CLK_LOCAL_MEM_FENCE);
   }
@@ -111,8 +157,9 @@ __kernel void reduce_ncc_affine(__global float* var2, __global float* cov, __rea
     // const uint2 osz = (uint2)(Nx/lsz.x, Ny/lsz.y);
     const uint2 osz = (uint2)(get_num_groups(0),get_num_groups(1));
     const uint  oid = get_group_id(0) + osz.x*get_group_id(1) + (osz.x*osz.y)*get_group_id(2);
-    var2[oid] = svar2[0] / group_size;
-    cov[oid]  = scov[0]  / group_size;
+    meanB[oid]  = smeanB[0] / group_size;
+    meanBB[oid] = smeanBB[0] / group_size;
+    meanAB[oid] = smeanAB[0] / group_size;
   }
 }
 

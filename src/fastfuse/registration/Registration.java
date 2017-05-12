@@ -42,6 +42,7 @@ public class Registration
   private static final List<String> KERNEL_NAMES =
                                                  Arrays.asList("reduce_mean_1buffer",
                                                                "reduce_mean_2buffer",
+                                                               "reduce_mean_3buffer",
                                                                "reduce_mean_2imagef",
                                                                "reduce_var_1imagef",
                                                                "affine_transform",
@@ -114,7 +115,7 @@ public class Registration
 
     // create new buffers
     int lNumReductions = mBufferSizes.size() - 1;
-    mBuffers = new ClearCLBuffer[lNumReductions][2];
+    mBuffers = new ClearCLBuffer[lNumReductions][3];
     for (int i = 0; i < lNumReductions; i++)
       for (int j = 0; j < mBuffers[i].length; j++)
         mBuffers[i][j] =
@@ -204,9 +205,8 @@ public class Registration
   public double[] register()
   {
 
-    // TODO minor improvement: compute mean and variance in one kernel
-    float[] meansAB = reduceImageMeans();
-    float varA = reduceImageVar(mImageA, meansAB[0]);
+    final float[] meansAB = reduceImageMeans();
+    final float varA = reduceImageVar(mImageA, meansAB[0]);
     // System.out.println(Arrays.toString(meansAB));
     // System.out.println(varA);
 
@@ -215,7 +215,10 @@ public class Registration
       @Override
       public double value(double[] theta)
       {
-        float ncc = reduceNCCAffine(floatArray(theta), meansAB, varA);
+        float ncc = reduceNCCAffine(floatArray(theta),
+                                    meansAB[0],
+                                    varA,
+                                    meansAB[1]);
         return 1 - ncc;
       }
     };
@@ -223,7 +226,8 @@ public class Registration
     // NLopt.NLopt_func Jnlopt = new NLopt.NLopt_func() {
     // @Override
     // public double execute(double[] theta, double[] gradient) {
-    // float ncc = reduceNccAffine(floatArray(theta), means, var1);
+    // float ncc = reduceNCCAffine(floatArray(theta), meansAB[0], varA,
+    // meansAB[1]);
     // return 1 - ncc;
     // }
     // };
@@ -361,10 +365,10 @@ public class Registration
 
   private int checkBuffersAndGetReductionIndex(ClearCLBuffer... bufs)
   {
-    assert bufs.length == 1 || bufs.length == 2;
+    assert 1 <= bufs.length && bufs.length <= 3;
     long bufSize = bufs[0].getLength();
-    if (bufs.length == 2)
-      assert bufs[1].getLength() == bufSize;
+    for (int i = 1; i < bufs.length; i++)
+      assert bufs[i].getLength() == bufSize;
     for (int i = 0; i < mBufferSizes.size() - 1; i++)
     {
       if (mBufferSizes.get(i) == bufSize)
@@ -418,6 +422,34 @@ public class Registration
       return new float[]
       { reduceMeanOnHost(mBuffers[lNumReductions - 1][0]),
         reduceMeanOnHost(mBuffers[lNumReductions - 1][1]) };
+
+    case 3:
+      lKernel = mKernels.get("reduce_mean_3buffer");
+      lKernel.setArguments(mBuffers[s][0],
+                           pBuffers[0],
+                           mBuffers[s][1],
+                           pBuffers[1],
+                           mBuffers[s][2],
+                           pBuffers[2]);
+      lKernel.setGlobalSizes(mBufferSizes.get(s));
+      lKernel.setLocalSizes(mGroupSize);
+      lKernel.run(mParams.getWaitToFinish());
+      for (int i = s + 1; i < lNumReductions; i++)
+      {
+        lKernel.setArguments(mBuffers[i][0],
+                             mBuffers[i - 1][0],
+                             mBuffers[i][1],
+                             mBuffers[i - 1][1],
+                             mBuffers[i][2],
+                             mBuffers[i - 1][2]);
+        lKernel.setGlobalSizes(mBufferSizes.get(i));
+        lKernel.run(mParams.getWaitToFinish());
+      }
+      return new float[]
+      { reduceMeanOnHost(mBuffers[lNumReductions - 1][0]),
+        reduceMeanOnHost(mBuffers[lNumReductions - 1][1]),
+        reduceMeanOnHost(mBuffers[lNumReductions - 1][2]) };
+
     default:
       assert false;
       return null;
@@ -464,22 +496,27 @@ public class Registration
   }
 
   private float reduceNCCAffine(float[] theta,
-                                float[] means,
-                                float varA)
+                                float meanA,
+                                float varA,
+                                float meanBapprox)
   {
     ClearCLKernel lKernel = mKernels.get("reduce_ncc_affine");
     lKernel.setArguments(mBuffers[0][0],
                          mBuffers[0][1],
+                         mBuffers[0][2],
                          mImageA,
                          mImageB,
                          getTransformMatrixBuffer(theta),
-                         means[0],
-                         means[1]);
+                         meanBapprox);
     lKernel.setGlobalSizes(mGlobalSize);
     lKernel.setLocalSizes(mLocalSize);
     lKernel.run(mParams.getWaitToFinish());
-    float[] reds = reduceMean(mBuffers[0][0], mBuffers[0][1]);
-    float varB = reds[0], covAB = reds[1];
+    float[] reds = reduceMean(mBuffers[0][0],
+                              mBuffers[0][1],
+                              mBuffers[0][2]);
+    float meanB = reds[0], meanBB = reds[1], meanAB = reds[2];
+    float varB = meanBB - meanB * meanB;
+    float covAB = meanAB - meanA * meanB;
     float ncc = (float) (covAB / (Math.sqrt(varA) * Math.sqrt(varB)));
     return ncc;
   }
