@@ -17,6 +17,7 @@ import clearcl.ClearCLContext;
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
 import clearcl.ClearCLProgram;
+import clearcl.enums.ImageChannelDataType;
 import clearcl.util.MatrixUtils;
 import coremem.enums.NativeTypeEnum;
 
@@ -83,6 +84,8 @@ public class Registration
 
   public void setImages(ClearCLImage pImageA, ClearCLImage pImageB)
   {
+    assert pImageA.getChannelDataType() == ImageChannelDataType.Float;
+    assert pImageB.getChannelDataType() == ImageChannelDataType.Float;
     assert Arrays.equals(pImageA.getDimensions(),
                          pImageB.getDimensions());
     mImageA = pImageA;
@@ -330,6 +333,8 @@ public class Registration
                         ClearCLImage pImageSource,
                         double... theta)
   {
+    assert pImageSource.getChannelDataType() == ImageChannelDataType.Float;
+    assert pImageTarget.getChannelDataType() == ImageChannelDataType.Float;
     ClearCLKernel lKernel = mKernels.get("affine_transform");
     lKernel.setArguments(pImageTarget,
                          pImageSource,
@@ -390,7 +395,7 @@ public class Registration
       lKernel.run(mParams.getWaitToFinish());
       for (int i = s + 1; i < lNumReductions; i++)
       {
-        lKernel.setArguments(mBuffers[s][0], mBuffers[i - 1][0]);
+        lKernel.setArguments(mBuffers[i][0], mBuffers[i - 1][0]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
         lKernel.run(mParams.getWaitToFinish());
       }
