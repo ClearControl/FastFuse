@@ -84,51 +84,29 @@ public class TenengradFusionTask extends FusionTaskBase
 
     ClearCLKernel lKernel = null;
 
+    // check image data types
+    ImageChannelDataType lSrcDataType = lImageA.getChannelDataType();
+    ImageChannelDataType lDstDataType =
+                                      lImageFused.getChannelDataType();
+    assert lSrcDataType == ImageChannelDataType.Float
+           || lSrcDataType == ImageChannelDataType.UnsignedInt16;
+    assert lDstDataType == ImageChannelDataType.Float
+           || lDstDataType == ImageChannelDataType.UnsignedInt16;
+    assert lImageB.getChannelDataType() == lSrcDataType;
+    assert mInputImagesSlotKeys.length == 2
+           || lImageC.getChannelDataType() == lSrcDataType;
+    assert mInputImagesSlotKeys.length == 2
+           || lImageD.getChannelDataType() == lSrcDataType;
+
     try
     {
-      if (mInputImagesSlotKeys.length == 2)
-      {
-        if (lImageA.isFloat())
-        {
-          if (lImageFused.isFloat())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_2_imagef_to_imagef");
-          else if (lImageFused.isInteger())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_2_imagef_to_imageui");
-        }
-        else if (lImageA.isInteger())
-        {
-          if (lImageFused.isFloat())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_2_imageui_to_imagef");
-          else if (lImageFused.isInteger())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_2_imageui_to_imageui");
-        }
-      }
-
-      else if (mInputImagesSlotKeys.length == 4)
-      {
-        if (lImageA.isFloat())
-        {
-          if (lImageFused.isFloat())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_4_imagef_to_imagef");
-          else if (lImageFused.isInteger())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_4_imagef_to_imageui");
-        }
-        else if (lImageA.isInteger())
-        {
-          if (lImageFused.isFloat())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_4_imageui_to_imagef");
-          else if (lImageFused.isInteger())
-            lKernel = getKernel(lImageFused.getContext(),
-                                "fuse_4_imageui_to_imageui");
-        }
-      }
+      String lKernelName =
+                         String.format("fuse_%d_image%s_to_image%s",
+                                       mInputImagesSlotKeys.length,
+                                       lImageA.isFloat() ? "f" : "ui",
+                                       lImageFused.isFloat() ? "f"
+                                                             : "ui");
+      lKernel = getKernel(lImageFused.getContext(), lKernelName);
     }
     catch (Exception e)
     {

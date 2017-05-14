@@ -128,7 +128,7 @@ public class Registration
                        mContext.createBuffer(NativeTypeEnum.Float,
                                              mBufferSizes.get(1 + i));
 
-    // clear host buffers
+    // forget host buffers
     mHostBuffers.clear();
 
     // create fixed matrices for transformations
@@ -395,17 +395,16 @@ public class Registration
       return reduceMeanOnHost(pBuffers);
 
     ClearCLKernel lKernel;
+    ClearCLBuffer[] lSrcBuffers;
     switch (pBuffers.length)
     {
     case 1:
       lKernel = mKernels.get("reduce_mean_1buffer");
-      lKernel.setArguments(mBuffers[s][0], pBuffers[0]);
-      lKernel.setGlobalSizes(mBufferSizes.get(s));
       lKernel.setLocalSizes(mGroupSize);
-      lKernel.run(mParams.getWaitToFinish());
-      for (int i = s + 1; i < lNumReductions; i++)
+      for (int i = s; i < lNumReductions; i++)
       {
-        lKernel.setArguments(mBuffers[i][0], mBuffers[i - 1][0]);
+        lSrcBuffers = i == s ? pBuffers : mBuffers[i - 1];
+        lKernel.setArguments(mBuffers[i][0], lSrcBuffers[0]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
         lKernel.run(mParams.getWaitToFinish());
       }
@@ -413,19 +412,14 @@ public class Registration
 
     case 2:
       lKernel = mKernels.get("reduce_mean_2buffer");
-      lKernel.setArguments(mBuffers[s][0],
-                           pBuffers[0],
-                           mBuffers[s][1],
-                           pBuffers[1]);
-      lKernel.setGlobalSizes(mBufferSizes.get(s));
       lKernel.setLocalSizes(mGroupSize);
-      lKernel.run(mParams.getWaitToFinish());
-      for (int i = s + 1; i < lNumReductions; i++)
+      for (int i = s; i < lNumReductions; i++)
       {
+        lSrcBuffers = i == s ? pBuffers : mBuffers[i - 1];
         lKernel.setArguments(mBuffers[i][0],
-                             mBuffers[i - 1][0],
+                             lSrcBuffers[0],
                              mBuffers[i][1],
-                             mBuffers[i - 1][1]);
+                             lSrcBuffers[1]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
         lKernel.run(mParams.getWaitToFinish());
       }
@@ -434,23 +428,16 @@ public class Registration
 
     case 3:
       lKernel = mKernels.get("reduce_mean_3buffer");
-      lKernel.setArguments(mBuffers[s][0],
-                           pBuffers[0],
-                           mBuffers[s][1],
-                           pBuffers[1],
-                           mBuffers[s][2],
-                           pBuffers[2]);
-      lKernel.setGlobalSizes(mBufferSizes.get(s));
       lKernel.setLocalSizes(mGroupSize);
-      lKernel.run(mParams.getWaitToFinish());
-      for (int i = s + 1; i < lNumReductions; i++)
+      for (int i = s; i < lNumReductions; i++)
       {
+        lSrcBuffers = i == s ? pBuffers : mBuffers[i - 1];
         lKernel.setArguments(mBuffers[i][0],
-                             mBuffers[i - 1][0],
+                             lSrcBuffers[0],
                              mBuffers[i][1],
-                             mBuffers[i - 1][1],
+                             lSrcBuffers[1],
                              mBuffers[i][2],
-                             mBuffers[i - 1][2]);
+                             lSrcBuffers[2]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
         lKernel.run(mParams.getWaitToFinish());
       }
@@ -562,9 +549,7 @@ public class Registration
       lProgram.buildAndLog();
       lKernels = new HashMap<>();
       for (String s : KERNEL_NAMES)
-      {
         lKernels.put(s, lProgram.createKernel(s));
-      }
     }
     catch (IOException e)
     {
