@@ -148,6 +148,7 @@ public class Registration
                                      / Math.log(2));
     assert pGlobalSize.length == 3;
     assert pGroupSize == Math.pow(2, lGroupSizeExp);
+    assert pGroupSize > 1;
     assert (pGlobalSize[0] * pGlobalSize[1] * pGlobalSize[2])
            % pGroupSize == 0;
 
@@ -372,7 +373,7 @@ public class Registration
     long bufSize = bufs[0].getLength();
     for (int i = 1; i < bufs.length; i++)
       assert bufs[i].getLength() == bufSize;
-    for (int i = 0; i < mBufferSizes.size() - 1; i++)
+    for (int i = 0; i < mBufferSizes.size(); i++)
       if (mBufferSizes.get(i) == bufSize)
         return i;
     assert false;
@@ -383,6 +384,15 @@ public class Registration
   {
     int lNumReductions = mBufferSizes.size() - 1;
     int s = checkBuffersAndGetReductionIndex(pBuffers);
+
+    // if no further opencl-based reductions possible
+    if (s == lNumReductions)
+    {
+      float[] lReductions = new float[pBuffers.length];
+      for (int i = 0; i < pBuffers.length; i++)
+        lReductions[i] = reduceMeanOnHost(pBuffers[i]);
+      return lReductions;
+    }
 
     ClearCLKernel lKernel;
     switch (pBuffers.length)
@@ -572,18 +582,17 @@ public class Registration
   @Override
   public String toString()
   {
-    return String.format("Registration:\n"
+    return String.format("Registration(group size = %d):\n"
                          + "-  global size = %4d, %4d, %4d\n"
                          + "-   local size = %4d, %4d, %4d\n"
-                         + "-   group size = %d\n"
                          + "- buffer sizes = %s\n",
+                         mGroupSize,
                          mGlobalSize[0],
                          mGlobalSize[1],
                          mGlobalSize[2],
                          mLocalSize[0],
                          mLocalSize[1],
                          mLocalSize[2],
-                         mGroupSize,
                          mBufferSizes.toString());
   }
 
