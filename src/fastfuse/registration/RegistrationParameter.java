@@ -49,4 +49,9 @@ public interface RegistrationParameter
 
   public void setNumberOfRestarts(int pRestarts);
 
+  public default int getOpenCLReductionThreshold()
+  {
+    return getOpenCLGroupSize();
+  }
+
 }

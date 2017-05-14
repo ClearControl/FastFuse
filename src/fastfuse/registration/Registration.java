@@ -59,6 +59,7 @@ public class Registration
 
   private ClearCLImage mImageA, mImageB;
   private ClearCLBuffer[][] mBuffers;
+  private Map<Integer, FloatBuffer> mHostBuffers = new HashMap<>();
 
   private Matrix4f mMatCenterAndScale, mMatCenterAndScaleInverse;
   private ClearCLBuffer mTransformMatrixBuffer;
@@ -105,7 +106,9 @@ public class Registration
     mBufferSizes.clear();
     mBufferSizes.push(mGlobalSize[0] * mGlobalSize[1]
                       * mGlobalSize[2]);
-    while (mBufferSizes.peek() % mGroupSize == 0)
+    mBufferSizes.push(mBufferSizes.peek() / mGroupSize);
+    while (mBufferSizes.peek() % mGroupSize == 0
+           && mBufferSizes.peek() > mParams.getOpenCLReductionThreshold())
       mBufferSizes.push(mBufferSizes.peek() / mGroupSize);
 
     // close existing buffers if necessary
@@ -124,6 +127,9 @@ public class Registration
         mBuffers[i][j] =
                        mContext.createBuffer(NativeTypeEnum.Float,
                                              mBufferSizes.get(1 + i));
+
+    // clear host buffers
+    mHostBuffers.clear();
 
     // create fixed matrices for transformations
     long cx = mGlobalSize[0] / 2, cy = mGlobalSize[1] / 2,
@@ -144,11 +150,11 @@ public class Registration
                                          final long... pGlobalSize)
   {
     // sanity checks
+    assert pGroupSize > 1;
     final int lGroupSizeExp = (int) (Math.log(pGroupSize)
                                      / Math.log(2));
-    assert pGlobalSize.length == 3;
     assert pGroupSize == Math.pow(2, lGroupSizeExp);
-    assert pGroupSize > 1;
+    assert pGlobalSize.length == 3;
     assert (pGlobalSize[0] * pGlobalSize[1] * pGlobalSize[2])
            % pGroupSize == 0;
 
@@ -347,7 +353,6 @@ public class Registration
   private ClearCLBuffer getTransformMatrixBuffer(float... theta)
   {
     assert theta.length == 6;
-
     Matrix4f lMatTranslate = AffineMatrix.translation(theta[0],
                                                       theta[1],
                                                       theta[2]);
@@ -387,12 +392,7 @@ public class Registration
 
     // if no further opencl-based reductions possible
     if (s == lNumReductions)
-    {
-      float[] lReductions = new float[pBuffers.length];
-      for (int i = 0; i < pBuffers.length; i++)
-        lReductions[i] = reduceMeanOnHost(pBuffers[i]);
-      return lReductions;
-    }
+      return reduceMeanOnHost(pBuffers);
 
     ClearCLKernel lKernel;
     switch (pBuffers.length)
@@ -409,8 +409,7 @@ public class Registration
         lKernel.setGlobalSizes(mBufferSizes.get(i));
         lKernel.run(mParams.getWaitToFinish());
       }
-      return new float[]
-      { reduceMeanOnHost(mBuffers[lNumReductions - 1][0]) };
+      return reduceMeanOnHost(mBuffers[lNumReductions - 1][0]);
 
     case 2:
       lKernel = mKernels.get("reduce_mean_2buffer");
@@ -430,9 +429,8 @@ public class Registration
         lKernel.setGlobalSizes(mBufferSizes.get(i));
         lKernel.run(mParams.getWaitToFinish());
       }
-      return new float[]
-      { reduceMeanOnHost(mBuffers[lNumReductions - 1][0]),
-        reduceMeanOnHost(mBuffers[lNumReductions - 1][1]) };
+      return reduceMeanOnHost(mBuffers[lNumReductions - 1][0],
+                              mBuffers[lNumReductions - 1][1]);
 
     case 3:
       lKernel = mKernels.get("reduce_mean_3buffer");
@@ -456,10 +454,9 @@ public class Registration
         lKernel.setGlobalSizes(mBufferSizes.get(i));
         lKernel.run(mParams.getWaitToFinish());
       }
-      return new float[]
-      { reduceMeanOnHost(mBuffers[lNumReductions - 1][0]),
-        reduceMeanOnHost(mBuffers[lNumReductions - 1][1]),
-        reduceMeanOnHost(mBuffers[lNumReductions - 1][2]) };
+      return reduceMeanOnHost(mBuffers[lNumReductions - 1][0],
+                              mBuffers[lNumReductions - 1][1],
+                              mBuffers[lNumReductions - 1][2]);
 
     default:
       assert false;
@@ -467,20 +464,36 @@ public class Registration
     }
   }
 
-  private float reduceMeanOnHost(ClearCLBuffer pBuffer)
+  private float[] reduceMeanOnHost(ClearCLBuffer... pBuffers)
   {
-    // transfer to host
-    int lBufferSize = (int) pBuffer.getLength();
-    // TODO: reuse FloatBuffer
-    FloatBuffer lHostBuffer = FloatBuffer.allocate(lBufferSize);
-    pBuffer.writeTo(lHostBuffer, true);
-    // naive summation (with double precision)
-    double lSum = 0;
-    for (int i = 0; i < lBufferSize; i++)
+    assert pBuffers != null;
+    if (pBuffers.length > 1)
     {
-      lSum += lHostBuffer.get(i);
+      float[] lReductions = new float[pBuffers.length];
+      for (int i = 0; i < pBuffers.length; i++)
+        lReductions[i] = reduceMeanOnHost(pBuffers[i])[0];
+      return lReductions;
     }
-    return (float) (lSum / lBufferSize);
+    else
+    {
+      // reuse existing buffer or create new one
+      int lBufferSize = (int) pBuffers[0].getLength();
+      FloatBuffer lHostBuffer = mHostBuffers.get(lBufferSize);
+      if (lHostBuffer == null)
+      {
+        lHostBuffer = FloatBuffer.allocate(lBufferSize);
+        mHostBuffers.put(lBufferSize, lHostBuffer);
+      }
+      lHostBuffer.clear();
+      // transfer to host
+      pBuffers[0].writeTo(lHostBuffer, true);
+      // naive summation (with double precision)
+      double lSum = 0;
+      for (int i = 0; i < lBufferSize; i++)
+        lSum += lHostBuffer.get(i);
+      return new float[]
+      { (float) (lSum / lBufferSize) };
+    }
   }
 
   private float[] reduceImageMeans()
@@ -566,9 +579,7 @@ public class Registration
     assert d != null;
     float[] f = new float[d.length];
     for (int i = 0; i < d.length; i++)
-    {
       f[i] = (float) d[i];
-    }
     return f;
   }
 
