@@ -32,7 +32,9 @@ inline float sobel_magnitude_squared_f(read_only image3d_t src, const int i0, co
   return Gx*Gx + Gy*Gy + Gz*Gz;
 }
 
+
 /*******************************/
+
 
 __kernel void fuse_4_imagef_to_imagef(write_only image3d_t dst, read_only image3d_t src1, read_only image3d_t src2, read_only image3d_t src3, read_only image3d_t src4) {
 
@@ -47,15 +49,14 @@ __kernel void fuse_4_imagef_to_imagef(write_only image3d_t dst, read_only image3
   const float wsum = w1 + w2 + w3 + w4 + 1e-30; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;  w3 /= wsum;  w4 /= wsum;
 
-  const ushort v1 = read_imagef(src1,sampler,coord).x;
-  const ushort v2 = read_imagef(src2,sampler,coord).x;
-  const ushort v3 = read_imagef(src3,sampler,coord).x;
-  const ushort v4 = read_imagef(src4,sampler,coord).x;
+  const float  v1 = read_imagef(src1,sampler,coord).x;
+  const float  v2 = read_imagef(src2,sampler,coord).x;
+  const float  v3 = read_imagef(src3,sampler,coord).x;
+  const float  v4 = read_imagef(src4,sampler,coord).x;
   const float res = w1*v1 + w2*v2 + w3*v3 + w4*v4;
 
   write_imagef(dst,coord,res);
 }
-
 
 __kernel void fuse_4_imageui_to_imagef(write_only image3d_t dst, read_only image3d_t src1, read_only image3d_t src2, read_only image3d_t src3, read_only image3d_t src4) {
 
@@ -92,10 +93,10 @@ __kernel void fuse_4_imagef_to_imageui(write_only image3d_t dst, read_only image
   const float wsum = w1 + w2 + w3 + w4 + 1e-30; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;  w3 /= wsum;  w4 /= wsum;
 
-  const float v1 = read_imagef(src1,sampler,coord).x;
-  const float v2 = read_imagef(src2,sampler,coord).x;
-  const float v3 = read_imagef(src3,sampler,coord).x;
-  const float v4 = read_imagef(src4,sampler,coord).x;
+  const float   v1 = read_imagef(src1,sampler,coord).x;
+  const float   v2 = read_imagef(src2,sampler,coord).x;
+  const float   v3 = read_imagef(src3,sampler,coord).x;
+  const float   v4 = read_imagef(src4,sampler,coord).x;
   const ushort res = (ushort)(w1*v1 + w2*v2 + w3*v3 + w4*v4);
 
   write_imageui(dst,coord,res);
@@ -114,10 +115,10 @@ __kernel void fuse_4_imageui_to_imageui(write_only image3d_t dst, read_only imag
   const float wsum = w1 + w2 + w3 + w4 + 1e-30; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;  w3 /= wsum;  w4 /= wsum;
 
-  const float v1 = read_imageui(src1,sampler,coord).x;
-  const float v2 = read_imageui(src2,sampler,coord).x;
-  const float v3 = read_imageui(src3,sampler,coord).x;
-  const float v4 = read_imageui(src4,sampler,coord).x;
+  const ushort  v1 = read_imageui(src1,sampler,coord).x;
+  const ushort  v2 = read_imageui(src2,sampler,coord).x;
+  const ushort  v3 = read_imageui(src3,sampler,coord).x;
+  const ushort  v4 = read_imageui(src4,sampler,coord).x;
   const ushort res = (ushort)(w1*v1 + w2*v2 + w3*v3 + w4*v4);
 
   write_imageui(dst,coord,res);
@@ -138,8 +139,8 @@ __kernel void fuse_2_imagef_to_imageui(write_only image3d_t dst, read_only image
   const float wsum = w1 + w2 + 1e-30; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;
 
-  const float v1  = read_imagef(src1,sampler,coord).x;
-  const float v2  = read_imagef(src2,sampler,coord).x;
+  const float   v1 = read_imagef(src1,sampler,coord).x;
+  const float   v2 = read_imagef(src2,sampler,coord).x;
   const ushort res = (ushort)(w1*v1 + w2*v2);
 
   write_imageui(dst,coord,res);
@@ -156,8 +157,8 @@ __kernel void fuse_2_imageui_to_imageui(write_only image3d_t dst, read_only imag
   const float wsum = w1 + w2 + 1e-30; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;
 
-  const float v1  = read_imageui(src1,sampler,coord).x;
-  const float v2  = read_imageui(src2,sampler,coord).x;
+  const ushort  v1 = read_imageui(src1,sampler,coord).x;
+  const ushort  v2 = read_imageui(src2,sampler,coord).x;
   const ushort res = (ushort)(w1*v1 + w2*v2);
 
   write_imageui(dst,coord,res);
@@ -174,9 +175,9 @@ __kernel void fuse_2_imagef_to_imagef(write_only image3d_t dst, read_only image3
   const float wsum = w1 + w2 + 1e-30; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;
 
-  const float v1  = read_imagef(src1,sampler,coord).x;
-  const float v2  = read_imagef(src2,sampler,coord).x;
-  const float res = (float)(w1*v1 + w2*v2);
+  const float  v1 = read_imagef(src1,sampler,coord).x;
+  const float  v2 = read_imagef(src2,sampler,coord).x;
+  const float res = w1*v1 + w2*v2;
 
   write_imagef(dst,coord,res);
 }
@@ -192,8 +193,8 @@ __kernel void fuse_2_imageui_to_imagef(write_only image3d_t dst, read_only image
   const float wsum = w1 + w2 + 1e-30; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;
 
-  const float v1  = read_imageui(src1,sampler,coord).x;
-  const float v2  = read_imageui(src2,sampler,coord).x;
+  const ushort v1 = read_imageui(src1,sampler,coord).x;
+  const ushort v2 = read_imageui(src2,sampler,coord).x;
   const float res = (float)(w1*v1 + w2*v2);
 
   write_imagef(dst,coord,res);
