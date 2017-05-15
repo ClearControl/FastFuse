@@ -309,8 +309,9 @@ public class Registration
                         Arrays.toString(currentTheta),
                         lOptimizer.getEvaluations());
     }
-    // System.out.printf("best = %.6f: %s\n", bestJ,
-    // Arrays.toString(bestTheta));
+    System.out.printf("best  = %.6f: %s\n",
+                      bestJ,
+                      Arrays.toString(bestTheta));
     return bestTheta;
   }
 

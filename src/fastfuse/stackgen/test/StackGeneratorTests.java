@@ -15,6 +15,7 @@ import fastfuse.stackgen.ImageCache;
 import fastfuse.stackgen.LightSheetMicroscopeSimulatorXWing;
 import fastfuse.stackgen.StackGenerator;
 import fastfuse.tasks.AverageTask;
+import fastfuse.tasks.GaussianBlurTask;
 import fastfuse.tasks.RegistrationTask;
 import fastfuse.tasks.TenengradFusionTask;
 
@@ -222,9 +223,23 @@ public class StackGeneratorTests
       lFlipTask.setFlipX(true);
       lFastFusionEngine.addTask(lFlipTask);/**/
 
+      int[] lKernelSizes = new int[]
+      { 3, 3, 3 };
+      float[] lKernelSigmas = new float[]
+      { 0.5f, 0.5f, 0.5f };
+
+      lFastFusionEngine.addTask(new GaussianBlurTask("C0",
+                                                     "C0blur",
+                                                     lKernelSizes,
+                                                     lKernelSigmas));
+      lFastFusionEngine.addTask(new GaussianBlurTask("C1",
+                                                     "C1blur",
+                                                     lKernelSizes,
+                                                     lKernelSigmas));
+
       RegistrationTask lRegisteredFusionTask =
-                                             new RegistrationTask("C0",
-                                                                  "C1",
+                                             new RegistrationTask("C0blur",
+                                                                  "C1blur",
                                                                   "C1",
                                                                   "C1reg");
       lRegisteredFusionTask.setZeroTransformMatrix(AffineMatrix.scaling(-1,
