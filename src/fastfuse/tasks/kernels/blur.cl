@@ -1,7 +1,7 @@
 __constant sampler_t sampler = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_NEAREST;
 
 
-__kernel void gaussian_blur_image3d_float
+__kernel void gaussian_blur_image3d
 (
   write_only image3d_t dst, read_only image3d_t src,
   const int Nx, const int Ny, const int Nz,
@@ -25,7 +25,7 @@ __kernel void gaussian_blur_image3d_float
       for (int z = -c.z; z <= c.z; z++) {
         const float wz = (z*z) / n.z;
         const float h = exp(wx + wy + wz);
-        res += h * read_imagef(src,sampler,coord+(int4)(x,y,z,0)).x;
+        res += h * (float)READ_IMAGE(src,sampler,coord+(int4)(x,y,z,0)).x;
         hsum += h;
         /*
         if (i==0 && j==0 && k==0)
@@ -39,5 +39,5 @@ __kernel void gaussian_blur_image3d_float
     printf("hsum = %.5f\n", hsum);
   */
   res /= hsum;
-  write_imagef(dst,coord,res);
+  WRITE_IMAGE(dst,coord,(DTYPE_OUT)res);
 }

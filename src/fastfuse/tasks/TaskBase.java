@@ -3,6 +3,8 @@ package fastfuse.tasks;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import clearcl.ClearCLContext;
@@ -49,9 +51,30 @@ public abstract class TaskBase implements TaskInterface
   protected ClearCLKernel getKernel(ClearCLContext pContext,
                                     String pKernelName) throws IOException
   {
+    return getKernel(pContext, pKernelName, null);
+  }
+
+  protected ClearCLKernel getKernel(ClearCLContext pContext,
+                                    String pKernelName,
+                                    Map<String, Object> pDefines) throws IOException
+  {
     if (mKernelMap.get(pKernelName) != null)
       return mKernelMap.get(pKernelName);
     mProgram = pContext.createProgram(mClass, mSourceFile);
+    if (pDefines != null)
+    {
+      for (Entry<String, Object> entry : pDefines.entrySet())
+      {
+        if (entry.getValue() instanceof String)
+          mProgram.addDefine(entry.getKey(),
+                             (String) entry.getValue());
+        else if (entry.getValue() instanceof Number)
+          mProgram.addDefine(entry.getKey(),
+                             (Number) entry.getValue());
+        else if (entry.getValue() == null)
+          mProgram.addDefine(entry.getKey());
+      }
+    }
     mProgram.addBuildOptionAllMathOpt();
     mProgram.buildAndLog();
     ClearCLKernel lKernel = mProgram.createKernel(pKernelName);

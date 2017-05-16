@@ -4,7 +4,6 @@ import java.io.IOException;
 
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
-import clearcl.enums.ImageChannelDataType;
 import fastfuse.FastFusionEngineInterface;
 
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -52,7 +51,7 @@ public class GaussianBlurTask extends TaskBase
 
     ClearCLImage lSrcImage, lDstImage;
     lSrcImage = pFastFusionEngine.getImage(mSrcImageKey);
-    assert lSrcImage.getChannelDataType() == ImageChannelDataType.Float;
+    assert TaskHelper.allowedDataType(lSrcImage);
     MutablePair<Boolean, ClearCLImage> lFlagAndDstImage =
                                                         pFastFusionEngine.ensureImageAllocated(mDstImageKey,
                                                                                                lSrcImage.getChannelDataType(),
@@ -63,7 +62,9 @@ public class GaussianBlurTask extends TaskBase
     {
       ClearCLKernel lKernel =
                             getKernel(lSrcImage.getContext(),
-                                      "gaussian_blur_image3d_float");
+                                      "gaussian_blur_image3d",
+                                      TaskHelper.getOpenCLDefines(lSrcImage,
+                                                                  lDstImage));
       lKernel.setGlobalSizes(lSrcImage.getDimensions());
       lKernel.setArguments(lDstImage,
                            lSrcImage,
