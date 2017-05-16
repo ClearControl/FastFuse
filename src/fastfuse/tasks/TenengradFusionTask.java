@@ -88,10 +88,7 @@ public class TenengradFusionTask extends FusionTaskBase
     ImageChannelDataType lSrcDataType = lImageA.getChannelDataType();
     ImageChannelDataType lDstDataType =
                                       lImageFused.getChannelDataType();
-    assert lSrcDataType == ImageChannelDataType.Float
-           || lSrcDataType == ImageChannelDataType.UnsignedInt16;
-    assert lDstDataType == ImageChannelDataType.Float
-           || lDstDataType == ImageChannelDataType.UnsignedInt16;
+    assert TaskHelper.allowedDataType(lSrcDataType, lDstDataType);
     assert lImageB.getChannelDataType() == lSrcDataType;
     assert mInputImagesSlotKeys.length == 2
            || lImageC.getChannelDataType() == lSrcDataType;

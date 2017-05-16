@@ -15,6 +15,7 @@ import fastfuse.stackgen.ImageCache;
 import fastfuse.stackgen.LightSheetMicroscopeSimulatorXWing;
 import fastfuse.stackgen.StackGenerator;
 import fastfuse.tasks.AverageTask;
+import fastfuse.tasks.DownsampleXYbyHalfTask;
 import fastfuse.tasks.GaussianBlurTask;
 import fastfuse.tasks.RegistrationTask;
 import fastfuse.tasks.TenengradFusionTask;
@@ -205,17 +206,26 @@ public class StackGeneratorTests
       FastFusionEngine lFastFusionEngine =
                                          new FastFusionEngine(lContext);
 
-      lFastFusionEngine.addTask(new TenengradFusionTask("C0L0",
-                                                        "C0L1",
-                                                        "C0L2",
-                                                        "C0L3",
+      // downsampling
+      for (int cam = 0; cam < 2; cam++)
+        for (int sheet = 0; sheet < 4; sheet++)
+        {
+          String imgStr = String.format("C%dL%d", cam, sheet);
+          lFastFusionEngine.addTask(new DownsampleXYbyHalfTask(imgStr,
+                                                               imgStr + "-lr"));
+        }
+
+      lFastFusionEngine.addTask(new TenengradFusionTask("C0L0-lr",
+                                                        "C0L1-lr",
+                                                        "C0L2-lr",
+                                                        "C0L3-lr",
                                                         "C0",
                                                         ImageChannelDataType.Float));
 
-      lFastFusionEngine.addTask(new TenengradFusionTask("C1L0",
-                                                        "C1L1",
-                                                        "C1L2",
-                                                        "C1L3",
+      lFastFusionEngine.addTask(new TenengradFusionTask("C1L0-lr",
+                                                        "C1L1-lr",
+                                                        "C1L2-lr",
+                                                        "C1L3-lr",
                                                         "C1",
                                                         ImageChannelDataType.Float));
 

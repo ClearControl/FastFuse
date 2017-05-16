@@ -76,32 +76,32 @@ public class RegistrationTask extends TaskBase implements
    * 
    * @param pImageProcessedReferenceSlotKey
    *          first stack (reference volume for registration)
-   * @param pImageprocessedToRegisterSlotKey
+   * @param pImageProcessedToRegisterSlotKey
    *          second stack (volume to be registered to reference volume)
    * @param pImageOriginalReferenceSlotKey
-   *          original/reference data for pImageASlotKey
+   *          original/reference data for pImageProcessedReferenceSlotKey
    * @param pImageOriginalToRegisterSlotKey
-   *          original/reference data for pImageBSlotKey, to be transformed
-   *          after registration has been found
-   * @param pImageDTransformedKey
-   *          transformed version of pImageDSlotKey
+   *          original/reference data for pImageprocessedToRegisterSlotKey, to
+   *          be transformed after registration has been found
+   * @param pImageOriginalToRegisterTransformedKey
+   *          transformed version of pImageOriginalToRegisterSlotKey
    */
   public RegistrationTask(String pImageProcessedReferenceSlotKey,
-                          String pImageprocessedToRegisterSlotKey,
+                          String pImageProcessedToRegisterSlotKey,
                           String pImageOriginalReferenceSlotKey,
                           String pImageOriginalToRegisterSlotKey,
-                          String pImageDTransformedKey)
+                          String pImageOriginalToRegisterTransformedKey)
   {
     super(pImageProcessedReferenceSlotKey,
-          pImageprocessedToRegisterSlotKey,
+          pImageProcessedToRegisterSlotKey,
           pImageOriginalReferenceSlotKey,
           pImageOriginalToRegisterSlotKey);
     mInputImagesSlotKeys = new String[]
     { pImageProcessedReferenceSlotKey,
-      pImageprocessedToRegisterSlotKey,
+      pImageProcessedToRegisterSlotKey,
       pImageOriginalReferenceSlotKey,
       pImageOriginalToRegisterSlotKey };
-    mTransformedImageSlotKey = pImageDTransformedKey;
+    mTransformedImageSlotKey = pImageOriginalToRegisterTransformedKey;
   }
 
   @Override
