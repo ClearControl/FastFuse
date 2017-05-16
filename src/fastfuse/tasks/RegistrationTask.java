@@ -74,33 +74,33 @@ public class RegistrationTask extends TaskBase implements
   /**
    * Instantiates a registered fusion task
    * 
-   * @param pImageASlotKey
+   * @param pImageProcessedReferenceSlotKey
    *          first stack (reference volume for registration)
-   * @param pImageBSlotKey
+   * @param pImageprocessedToRegisterSlotKey
    *          second stack (volume to be registered to reference volume)
-   * @param pImageCSlotKey
+   * @param pImageOriginalReferenceSlotKey
    *          original/reference data for pImageASlotKey
-   * @param pImageDSlotKey
+   * @param pImageOriginalToRegisterSlotKey
    *          original/reference data for pImageBSlotKey, to be transformed
    *          after registration has been found
    * @param pImageDTransformedKey
    *          transformed version of pImageDSlotKey
    */
-  public RegistrationTask(String pImageASlotKey,
-                          String pImageBSlotKey,
-                          String pImageCSlotKey,
-                          String pImageDSlotKey,
+  public RegistrationTask(String pImageProcessedReferenceSlotKey,
+                          String pImageprocessedToRegisterSlotKey,
+                          String pImageOriginalReferenceSlotKey,
+                          String pImageOriginalToRegisterSlotKey,
                           String pImageDTransformedKey)
   {
-    super(pImageASlotKey,
-          pImageBSlotKey,
-          pImageCSlotKey,
-          pImageDSlotKey);
+    super(pImageProcessedReferenceSlotKey,
+          pImageprocessedToRegisterSlotKey,
+          pImageOriginalReferenceSlotKey,
+          pImageOriginalToRegisterSlotKey);
     mInputImagesSlotKeys = new String[]
-    { pImageASlotKey,
-      pImageBSlotKey,
-      pImageCSlotKey,
-      pImageDSlotKey };
+    { pImageProcessedReferenceSlotKey,
+      pImageprocessedToRegisterSlotKey,
+      pImageOriginalReferenceSlotKey,
+      pImageOriginalToRegisterSlotKey };
     mTransformedImageSlotKey = pImageDTransformedKey;
   }
 
