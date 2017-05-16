@@ -535,6 +535,16 @@ public class Registration
     return ncc;
   }
 
+  public double computeScore(double[] theta)
+  {
+    float[] meansAB = reduceImageMeans();
+    float varA = reduceImageVar(mImageA, meansAB[0]);
+    return 1 - reduceNCCAffine(floatArray(theta),
+                               meansAB[0],
+                               varA,
+                               meansAB[1]);
+  }
+
   private Map<String, ClearCLKernel> getKernels(int pGroupSize)
   {
     HashMap<String, ClearCLKernel> lKernels = null;

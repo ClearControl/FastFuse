@@ -79,19 +79,29 @@ public class RegistrationTask extends TaskBase implements
    * @param pImageBSlotKey
    *          second stack (volume to be registered to reference volume)
    * @param pImageCSlotKey
-   *          stack to be transformed after registration has been found
-   * @param pImageBTransformedKey
-   *          transformed version of pImageCSlotKey
+   *          original/reference data for pImageASlotKey
+   * @param pImageDSlotKey
+   *          original/reference data for pImageBSlotKey, to be transformed
+   *          after registration has been found
+   * @param pImageDTransformedKey
+   *          transformed version of pImageDSlotKey
    */
   public RegistrationTask(String pImageASlotKey,
                           String pImageBSlotKey,
                           String pImageCSlotKey,
-                          String pImageCTransformedKey)
+                          String pImageDSlotKey,
+                          String pImageDTransformedKey)
   {
-    super(pImageASlotKey, pImageBSlotKey, pImageCSlotKey);
+    super(pImageASlotKey,
+          pImageBSlotKey,
+          pImageCSlotKey,
+          pImageDSlotKey);
     mInputImagesSlotKeys = new String[]
-    { pImageASlotKey, pImageBSlotKey, pImageCSlotKey };
-    mTransformedImageSlotKey = pImageCTransformedKey;
+    { pImageASlotKey,
+      pImageBSlotKey,
+      pImageCSlotKey,
+      pImageDSlotKey };
+    mTransformedImageSlotKey = pImageDTransformedKey;
   }
 
   @Override
@@ -100,10 +110,11 @@ public class RegistrationTask extends TaskBase implements
   {
     setWaitToFinish(pWaitToFinish);
 
-    ClearCLImage lImageA, lImageB, lImageC;
+    ClearCLImage lImageA, lImageB, lImageC, lImageD;
     lImageA = pFastFusionEngine.getImage(mInputImagesSlotKeys[0]);
     lImageB = pFastFusionEngine.getImage(mInputImagesSlotKeys[1]);
     lImageC = pFastFusionEngine.getImage(mInputImagesSlotKeys[2]);
+    lImageD = pFastFusionEngine.getImage(mInputImagesSlotKeys[3]);
 
     if (mRegistration == null)
       mRegistration = new Registration(this, lImageA, lImageB);
@@ -118,6 +129,12 @@ public class RegistrationTask extends TaskBase implements
       lBestTransform = mRegistration.register();
       // and use as initial transform for next time
       setInitialTransformation(lBestTransform);
+
+      mRegistration.setImages(lImageC, lImageD);
+      double lBestScoreOriginalImages =
+                                      mRegistration.computeScore(lBestTransform);
+      System.out.printf("score = %.6f for best transformation on original images\n",
+                        lBestScoreOriginalImages);
     }
     catch (Throwable e)
     {
@@ -133,7 +150,7 @@ public class RegistrationTask extends TaskBase implements
     ClearCLImage lRegisteredImage =
                                   lFlagAndRegisteredImage.getRight();
     mRegistration.transform(lRegisteredImage,
-                            lImageC,
+                            lImageD,
                             lBestTransform);
     lFlagAndRegisteredImage.setLeft(true);
     return true;
