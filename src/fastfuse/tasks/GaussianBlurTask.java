@@ -1,9 +1,13 @@
 package fastfuse.tasks;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
+import clearcl.enums.HostAccessType;
+import clearcl.enums.ImageChannelDataType;
+import clearcl.enums.KernelAccessType;
 import fastfuse.FastFusionEngineInterface;
 
 import org.apache.commons.lang3.tuple.MutablePair;
@@ -14,11 +18,14 @@ public class GaussianBlurTask extends TaskBase
   private final String mSrcImageKey, mDstImageKey;
   private final int[] mKernelSizes;
   private final float[] mKernelSigmas;
+  private final Boolean mSeparable;
+  private ClearCLImage mTmpImage;
 
   public GaussianBlurTask(String pSrcImageKey,
                           String pDstImageKey,
                           int[] pKernelSizes,
-                          float[] pKernelSigmas)
+                          float[] pKernelSigmas,
+                          Boolean pSeparable)
   {
     super(pSrcImageKey);
     setupProgram(GaussianBlurTask.class, "./kernels/blur.cl");
@@ -32,16 +39,19 @@ public class GaussianBlurTask extends TaskBase
     }
     mKernelSizes = pKernelSizes;
     mKernelSigmas = pKernelSigmas;
+    mSeparable = pSeparable;
   }
 
   public GaussianBlurTask(String pSrcImageKey,
                           String pDstImageKey,
-                          int pKernelSize,
-                          float pKernelSigma)
+                          int[] pKernelSizes,
+                          float[] pKernelSigmas)
   {
-    this(pSrcImageKey, pDstImageKey, new int[]
-    { pKernelSize, pKernelSize, pKernelSize }, new float[]
-    { pKernelSigma, pKernelSigma, pKernelSigma });
+    this(pSrcImageKey,
+         pDstImageKey,
+         pKernelSizes,
+         pKernelSigmas,
+         null);
   }
 
   @Override
@@ -52,6 +62,39 @@ public class GaussianBlurTask extends TaskBase
     ClearCLImage lSrcImage, lDstImage;
     lSrcImage = pFastFusionEngine.getImage(mSrcImageKey);
     assert TaskHelper.allowedDataType(lSrcImage);
+
+    boolean lSeparable;
+    if (mSeparable != null)
+                           // specifically requested
+                           lSeparable = mSeparable;
+    else
+    {
+      // check requirements for separable
+      lSeparable =
+                 lSrcImage.getChannelDataType() == ImageChannelDataType.Float
+                   && (mKernelSizes[0] * mKernelSizes[1]
+                       * mKernelSizes[2] > 100);
+    }
+
+    if (lSeparable)
+    {
+      assert lSrcImage.getChannelDataType() == ImageChannelDataType.Float;
+      // prepare temporary image
+      if (mTmpImage == null
+          || !Arrays.equals(lSrcImage.getDimensions(),
+                            mTmpImage.getDimensions()))
+      {
+        if (mTmpImage != null)
+          mTmpImage.close();
+        mTmpImage =
+                  lSrcImage.getContext()
+                           .createSingleChannelImage(HostAccessType.ReadWrite,
+                                                     KernelAccessType.ReadWrite,
+                                                     ImageChannelDataType.Float,
+                                                     lSrcImage.getDimensions());
+      }
+    }
+
     MutablePair<Boolean, ClearCLImage> lFlagAndDstImage =
                                                         pFastFusionEngine.ensureImageAllocated(mDstImageKey,
                                                                                                lSrcImage.getChannelDataType(),
@@ -60,23 +103,55 @@ public class GaussianBlurTask extends TaskBase
 
     try
     {
-      ClearCLKernel lKernel =
-                            getKernel(lSrcImage.getContext(),
-                                      "gaussian_blur_image3d",
-                                      TaskHelper.getOpenCLDefines(lSrcImage,
-                                                                  lDstImage));
-      lKernel.setGlobalSizes(lSrcImage.getDimensions());
-      lKernel.setArguments(lDstImage,
-                           lSrcImage,
-                           mKernelSizes[0],
-                           mKernelSizes[1],
-                           mKernelSizes[2],
-                           mKernelSigmas[0],
-                           mKernelSigmas[1],
-                           mKernelSigmas[2]);
-      lKernel.run(pWaitToFinish);
-      lFlagAndDstImage.setLeft(true);
-      return true;
+      // TODO: test
+      ClearCLKernel lKernel;
+      if (lSeparable)
+      {
+        lKernel = getKernel(lSrcImage.getContext(),
+                            "gaussian_blur_sep_image3d",
+                            TaskHelper.getOpenCLDefines(lSrcImage,
+                                                        lDstImage));
+        lKernel.setGlobalSizes(lSrcImage.getDimensions());
+        lKernel.setArguments(lDstImage,
+                             lSrcImage,
+                             0,
+                             mKernelSizes[0],
+                             mKernelSigmas[0]);
+        lKernel.run(pWaitToFinish);
+        lKernel.setArguments(mTmpImage,
+                             lDstImage,
+                             1,
+                             mKernelSizes[1],
+                             mKernelSigmas[1]);
+        lKernel.run(pWaitToFinish);
+        lKernel.setArguments(lDstImage,
+                             mTmpImage,
+                             2,
+                             mKernelSizes[2],
+                             mKernelSigmas[2]);
+        lKernel.run(pWaitToFinish);
+        lFlagAndDstImage.setLeft(true);
+        return true;
+      }
+      else
+      {
+        lKernel = getKernel(lSrcImage.getContext(),
+                            "gaussian_blur_image3d",
+                            TaskHelper.getOpenCLDefines(lSrcImage,
+                                                        lDstImage));
+        lKernel.setGlobalSizes(lSrcImage.getDimensions());
+        lKernel.setArguments(lDstImage,
+                             lSrcImage,
+                             mKernelSizes[0],
+                             mKernelSizes[1],
+                             mKernelSizes[2],
+                             mKernelSigmas[0],
+                             mKernelSigmas[1],
+                             mKernelSigmas[2]);
+        lKernel.run(pWaitToFinish);
+        lFlagAndDstImage.setLeft(true);
+        return true;
+      }
     }
     catch (IOException e)
     {
