@@ -1,14 +1,12 @@
 package fastfuse.tasks;
 
 import java.io.IOException;
-import java.util.Arrays;
 
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
-import clearcl.enums.HostAccessType;
 import clearcl.enums.ImageChannelDataType;
-import clearcl.enums.KernelAccessType;
 import fastfuse.FastFusionEngineInterface;
+import fastfuse.FastFusionMemoryPool;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 
@@ -19,7 +17,6 @@ public class GaussianBlurTask extends TaskBase
   private final int[] mKernelSizes;
   private final float[] mKernelSigmas;
   private final Boolean mSeparable;
-  private ClearCLImage mTmpImage;
 
   public GaussianBlurTask(String pSrcImageKey,
                           String pDstImageKey,
@@ -59,7 +56,7 @@ public class GaussianBlurTask extends TaskBase
                          boolean pWaitToFinish)
   {
 
-    ClearCLImage lSrcImage, lDstImage;
+    ClearCLImage lSrcImage, lDstImage, mTmpImage = null;
     lSrcImage = pFastFusionEngine.getImage(mSrcImageKey);
     assert TaskHelper.allowedDataType(lSrcImage);
 
@@ -79,20 +76,11 @@ public class GaussianBlurTask extends TaskBase
     if (lSeparable)
     {
       assert lSrcImage.getChannelDataType() == ImageChannelDataType.Float;
-      // prepare temporary image
-      if (mTmpImage == null
-          || !Arrays.equals(lSrcImage.getDimensions(),
-                            mTmpImage.getDimensions()))
-      {
-        if (mTmpImage != null)
-          mTmpImage.close();
-        mTmpImage =
-                  lSrcImage.getContext()
-                           .createSingleChannelImage(HostAccessType.ReadWrite,
-                                                     KernelAccessType.ReadWrite,
-                                                     ImageChannelDataType.Float,
-                                                     lSrcImage.getDimensions());
-      }
+      // get temporary image
+      mTmpImage =
+                FastFusionMemoryPool.get(lSrcImage.getContext())
+                                    .requestImage(ImageChannelDataType.Float,
+                                                  lSrcImage.getDimensions());
     }
 
     MutablePair<Boolean, ClearCLImage> lFlagAndDstImage =
@@ -130,6 +118,8 @@ public class GaussianBlurTask extends TaskBase
                              mKernelSizes[2],
                              mKernelSigmas[2]);
         lKernel.run(pWaitToFinish);
+        FastFusionMemoryPool.get(lSrcImage.getContext())
+                            .releaseImage(mTmpImage);
         lFlagAndDstImage.setLeft(true);
         return true;
       }

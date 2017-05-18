@@ -3,7 +3,6 @@ package fastfuse;
 import static java.lang.Math.min;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -12,9 +11,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import clearcl.ClearCLContext;
 import clearcl.ClearCLImage;
-import clearcl.enums.HostAccessType;
 import clearcl.enums.ImageChannelDataType;
-import clearcl.enums.KernelAccessType;
 import coremem.ContiguousMemoryInterface;
 import fastfuse.tasks.TaskInterface;
 
@@ -68,15 +65,22 @@ public class FastFusionEngine implements FastFusionEngineInterface
   public void reset(boolean pCloseImages)
   {
     mContext.getDefaultQueue().waitToFinish();
+    FastFusionMemoryPool lMemoryPool =
+                                     FastFusionMemoryPool.get(mContext);
 
     for (Entry<String, MutablePair<Boolean, ClearCLImage>> lEntry : mImageSlotsMap.entrySet())
     {
-
-      lEntry.getValue().left = false;
-      if (pCloseImages)
-        lEntry.getValue().getRight().close();
+      ClearCLImage lImage = lEntry.getValue().getRight();
+      if (lMemoryPool.isInUse(lImage))
+      {
+        lMemoryPool.releaseImage(lImage);
+      }
+      lEntry.getValue().setRight(null);
+      lEntry.getValue().setLeft(false);
     }
     mExecutedFusionTasks.clear();
+    if (pCloseImages)
+      FastFusionMemoryPool.get(mContext).free();
   }
 
   @Override
@@ -129,28 +133,25 @@ public class FastFusionEngine implements FastFusionEngineInterface
 
     if (lPair == null)
     {
-      lPair = MutablePair.of(true, (ClearCLImage) null);
-
+      lPair = MutablePair.of(false, (ClearCLImage) null);
       getImageSlotsMap().put(pSlotKey, lPair);
     }
 
+    FastFusionMemoryPool lMemoryPool =
+                                     FastFusionMemoryPool.get(getContext());
     ClearCLImage lImage = lPair.getRight();
 
-    if (lImage == null
-        || !Arrays.equals(lImage.getDimensions(), pDimensions))
+    if (lImage == null)
     {
-      if (lImage != null)
-        lImage.close();
-
-      lImage =
-             mContext.createSingleChannelImage(HostAccessType.ReadWrite,
-                                               KernelAccessType.ReadWrite,
-                                               pImageChannelDataType,
-                                               pDimensions);
-
-      lPair.setLeft(false);
+      // System.err.printf("Requesting %10s - ", pSlotKey);
+      lImage = lMemoryPool.requestImage(pImageChannelDataType,
+                                        pDimensions);
       lPair.setRight(lImage);
+      lPair.setLeft(false);
     }
+
+    assert lMemoryPool.isInUse(lImage);
+    assert !lPair.getLeft();
 
     return lPair;
   }
@@ -164,7 +165,7 @@ public class FastFusionEngine implements FastFusionEngineInterface
 
     if (lDstPair == null)
     {
-      lDstPair = MutablePair.of(true, (ClearCLImage) null);
+      lDstPair = MutablePair.of(false, (ClearCLImage) null);
       getImageSlotsMap().put(pDstSlotKey, lDstPair);
     }
 
@@ -172,7 +173,7 @@ public class FastFusionEngine implements FastFusionEngineInterface
                                                 getImageSlotsMap().get(pSrcSlotKey);
 
     lDstPair.setRight(lSrcPair.getRight());
-    lDstPair.setLeft(true);
+    lDstPair.setLeft(lSrcPair.getLeft());
 
   }
 

@@ -10,6 +10,7 @@ import clearcl.backend.ClearCLBackends;
 import clearcl.enums.ImageChannelDataType;
 import clearcl.viewer.ClearCLImageViewer;
 import fastfuse.FastFusionEngine;
+import fastfuse.FastFusionMemoryPool;
 import fastfuse.registration.AffineMatrix;
 import fastfuse.stackgen.ImageCache;
 import fastfuse.stackgen.LightSheetMicroscopeSimulatorXWing;
@@ -17,6 +18,7 @@ import fastfuse.stackgen.StackGenerator;
 import fastfuse.tasks.AverageTask;
 import fastfuse.tasks.DownsampleXYbyHalfTask;
 import fastfuse.tasks.GaussianBlurTask;
+import fastfuse.tasks.MemoryReleaseTask;
 import fastfuse.tasks.RegistrationTask;
 import fastfuse.tasks.TenengradFusionTask;
 
@@ -201,7 +203,10 @@ public class StackGeneratorTests
                                                                                              lPhantomDepth);
 
         StackGenerator lStackGenerator =
-                                       new StackGenerator(lSimulator);)
+                                       new StackGenerator(lSimulator);
+
+        FastFusionMemoryPool lMemoryPool =
+                                         FastFusionMemoryPool.get(lContext);)
     {
       FastFusionEngine lFastFusionEngine =
                                          new FastFusionEngine(lContext);
@@ -213,6 +218,9 @@ public class StackGeneratorTests
           String imgStr = String.format("C%dL%d", cam, sheet);
           lFastFusionEngine.addTask(new DownsampleXYbyHalfTask(imgStr,
                                                                imgStr + "-lr"));
+          lFastFusionEngine.addTask(new MemoryReleaseTask(imgStr
+                                                          + "-lr",
+                                                          imgStr));
         }
 
       lFastFusionEngine.addTask(new TenengradFusionTask("C0L0-lr",
@@ -228,6 +236,17 @@ public class StackGeneratorTests
                                                         "C1L3-lr",
                                                         "C1",
                                                         ImageChannelDataType.Float));
+
+      lFastFusionEngine.addTask(new MemoryReleaseTask("C0",
+                                                      "C0L0-lr",
+                                                      "C0L1-lr",
+                                                      "C0L2-lr",
+                                                      "C0L3-lr"));
+      lFastFusionEngine.addTask(new MemoryReleaseTask("C1",
+                                                      "C1L0-lr",
+                                                      "C1L1-lr",
+                                                      "C1L2-lr",
+                                                      "C1L3-lr"));
 
       /*FlipTask lFlipTask = new FlipTask("C1", "C1flipped");
       lFlipTask.setFlipX(true);
@@ -259,10 +278,19 @@ public class StackGeneratorTests
 
       lFastFusionEngine.addTask(lRegisteredFusionTask);
 
+      lFastFusionEngine.addTask(new MemoryReleaseTask("C1reg",
+                                                      "C0blur",
+                                                      "C1blur",
+                                                      "C1"));
+
       lFastFusionEngine.addTask(new TenengradFusionTask("C0",
                                                         "C1reg",
                                                         "C",
                                                         ImageChannelDataType.UnsignedInt16));
+
+      lFastFusionEngine.addTask(new MemoryReleaseTask("C",
+                                                      "C0",
+                                                      "C1reg"));
 
       lStackGenerator.setCenteredROI(lMaxCameraResolution / 2,
                                      lMaxCameraResolution);
