@@ -1,6 +1,7 @@
 package fastfuse.tasks;
 
 import java.io.IOException;
+import java.util.stream.IntStream;
 
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
@@ -20,15 +21,20 @@ public class GaussianBlurTask extends TaskBase
 
   public GaussianBlurTask(String pSrcImageKey,
                           String pDstImageKey,
-                          int[] pKernelSizes,
                           float[] pKernelSigmas,
+                          int[] pKernelSizes,
                           Boolean pSeparable)
   {
     super(pSrcImageKey);
     setupProgram(GaussianBlurTask.class, "./kernels/blur.cl");
     mSrcImageKey = pSrcImageKey;
     mDstImageKey = pDstImageKey;
-    assert pKernelSizes.length == 3 && pKernelSigmas.length == 3;
+    assert pKernelSigmas != null && pKernelSigmas.length == 3;
+    assert pKernelSizes == null || pKernelSizes.length == 3;
+    if (pKernelSizes == null)
+      pKernelSizes = IntStream.range(0, 3)
+                              .map(i -> getKernelSize(pKernelSigmas[i]))
+                              .toArray();
     for (int i = 0; i < 3; i++)
     {
       assert pKernelSizes[i] % 2 == 1;
@@ -41,14 +47,27 @@ public class GaussianBlurTask extends TaskBase
 
   public GaussianBlurTask(String pSrcImageKey,
                           String pDstImageKey,
-                          int[] pKernelSizes,
-                          float[] pKernelSigmas)
+                          float[] pKernelSigmas,
+                          int[] pKernelSizes)
   {
     this(pSrcImageKey,
          pDstImageKey,
-         pKernelSizes,
          pKernelSigmas,
+         pKernelSizes,
          null);
+  }
+
+  public GaussianBlurTask(String pSrcImageKey,
+                          String pDstImageKey,
+                          float[] pKernelSigmas)
+  {
+    this(pSrcImageKey, pDstImageKey, pKernelSigmas, null, null);
+  }
+
+  private int getKernelSize(float sigma)
+  {
+    int lSize = (int) Math.round(2 * 3.5 * sigma);
+    return (lSize % 2 == 1) ? lSize : lSize + 1;
   }
 
   @Override

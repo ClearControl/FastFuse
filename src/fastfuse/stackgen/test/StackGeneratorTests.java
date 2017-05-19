@@ -259,12 +259,12 @@ public class StackGeneratorTests
 
       lFastFusionEngine.addTask(new GaussianBlurTask("C0",
                                                      "C0blur",
-                                                     lKernelSizes,
-                                                     lKernelSigmas));
+                                                     lKernelSigmas,
+                                                     lKernelSizes));
       lFastFusionEngine.addTask(new GaussianBlurTask("C1",
                                                      "C1blur",
-                                                     lKernelSizes,
-                                                     lKernelSigmas));
+                                                     lKernelSigmas,
+                                                     lKernelSizes));
 
       RegistrationTask lRegisteredFusionTask =
                                              new RegistrationTask("C0blur",
