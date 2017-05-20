@@ -33,9 +33,7 @@ public class MemoryReleaseTask extends TaskBase
     for (String lImageKey : mImageKeysToRelease)
     {
       ClearCLImage lImage = pFastFusionEngine.getImage(lImageKey);
-      // System.err.printf("Releasing %10s - ", lImageKey);
-      FastFusionMemoryPool.get(lImage.getContext())
-                          .releaseImage(lImage);
+      FastFusionMemoryPool.get().releaseImage(lImageKey, lImage);
     }
     return true;
   }

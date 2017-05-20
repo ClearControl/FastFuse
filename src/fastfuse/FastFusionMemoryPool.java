@@ -1,8 +1,10 @@
 package fastfuse;
 
+import java.io.PrintStream;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -20,11 +22,13 @@ import org.apache.commons.math3.util.Pair;
 
 public class FastFusionMemoryPool implements AutoCloseable
 {
+  private final static PrintStream cDebugOut = System.err;
 
   private static FastFusionMemoryPool mInstance = null;
 
+  private final boolean mDebug;
   private final ClearCLContext mContext;
-  private final long mPoolSize;
+  private long mPoolSize;
   private long mCurrentSize = 0;
   private final Map<Pair<ImageChannelDataType, List<Long>>, Stack<ClearCLImage>> mImagesAvailable =
                                                                                                   new HashMap<>();
@@ -32,25 +36,52 @@ public class FastFusionMemoryPool implements AutoCloseable
   private final LinkedHashSet<Pair<ImageChannelDataType, List<Long>>> mImageAccess =
                                                                                    new LinkedHashSet<>();
 
-  public static FastFusionMemoryPool get(ClearCLContext pContext)
+  public static FastFusionMemoryPool getInstance(ClearCLContext pContext)
   {
-    return get(pContext, Long.MAX_VALUE);
+    return getInstance(pContext,
+                       pContext.getDevice()
+                               .getGlobalMemorySizeInBytes(),
+                       false);
   }
 
-  public static FastFusionMemoryPool get(ClearCLContext pContext,
-                                         long pPreferredPoolSize)
+  public static FastFusionMemoryPool getInstance(ClearCLContext pContext,
+                                                 long pPreferredPoolSize)
   {
     if (mInstance == null)
       mInstance = new FastFusionMemoryPool(pContext,
-                                           pPreferredPoolSize);
+                                           pPreferredPoolSize,
+                                           false);
+    return mInstance;
+  }
+
+  public static FastFusionMemoryPool getInstance(ClearCLContext pContext,
+                                                 long pPreferredPoolSize,
+                                                 boolean pDebug)
+  {
+    if (mInstance == null)
+      mInstance =
+                new FastFusionMemoryPool(pContext,
+                                         pPreferredPoolSize,
+                                         pDebug);
+    return mInstance;
+  }
+
+  public static FastFusionMemoryPool get()
+  {
+    if (mInstance == null)
+      throw new FastFusionException("FastFusionMemoryPool.get() can only be called after FastFusionMemoryPool.getInstance()");
     return mInstance;
   }
 
   private FastFusionMemoryPool(ClearCLContext pContext,
-                               long pPoolSize)
+                               long pPoolSize,
+                               boolean pDebug)
   {
     mContext = pContext;
     mPoolSize = pPoolSize;
+    mDebug = pDebug;
+    debug("Creating FastFusionMemoryPool with preferred size limit of %.0f MB\n",
+          mPoolSize / (1024d * 1024d));
   }
 
   private ClearCLImage allocateImage(ImageChannelDataType pDataType,
@@ -65,22 +96,23 @@ public class FastFusionMemoryPool implements AutoCloseable
                                                pDataType,
                                                pDimensions);
     }
-    catch (Exception e1)
+    catch (Throwable e1)
     {
       try
       {
-        freeMem();
+        free(); // free all available images
         lImage =
                mContext.createSingleChannelImage(HostAccessType.ReadWrite,
                                                  KernelAccessType.ReadWrite,
                                                  pDataType,
                                                  pDimensions);
       }
-      catch (Exception e2)
+      catch (Throwable e2)
       {
-        e1.printStackTrace();
-        e2.printStackTrace();
-        return null;
+        throw new FastFusionException(e2,
+                                      "Couldn't allocate image of type '%s' with dimensions %s",
+                                      pDataType.toString(),
+                                      Arrays.toString(pDimensions));
       }
     }
     mCurrentSize += lImage.getSizeInBytes();
@@ -91,6 +123,9 @@ public class FastFusionMemoryPool implements AutoCloseable
   {
     mCurrentSize -= pImage.getSizeInBytes();
     pImage.close();
+    debug("             free:      %32s - %s\n",
+          getKey(pImage).toString(),
+          toString());
   }
 
   private boolean freeMemIsNecessary()
@@ -103,12 +138,11 @@ public class FastFusionMemoryPool implements AutoCloseable
     return getAvailableImagesCount() > 0;
   }
 
-  private void freeMem()
+  private void freeMemIfNecessaryAndPossible()
   {
     if (freeMemIsNecessary() && freeMemIsPossible())
     {
       assert !mImageAccess.isEmpty();
-      // long lSizeBefore = mCurrentSize;
       for (Pair<ImageChannelDataType, List<Long>> lKeyAccess : mImageAccess)
       {
         Stack<ClearCLImage> lImageStack =
@@ -119,36 +153,54 @@ public class FastFusionMemoryPool implements AutoCloseable
           freeImage(lImageStack.pop());
         }
       }
-      // System.err.printf("Freeing %.1f MB of memory - ", (lSizeBefore -
-      // mCurrentSize)/(1024d*1024d));
     }
   }
 
-  public ClearCLImage requestImage(final ImageChannelDataType pDataType,
+  public ClearCLImage requestImage(ImageChannelDataType pDataType,
+                                   long... pDimensions)
+  {
+    return requestImage(null, pDataType, pDimensions);
+  }
+
+  public ClearCLImage requestImage(final String pName,
+                                   final ImageChannelDataType pDataType,
                                    final long... pDimensions)
   {
     Pair<ImageChannelDataType, List<Long>> lKey = getKey(pDataType,
                                                          pDimensions);
     Stack<ClearCLImage> lSpecificImagesAvailable =
                                                  mImagesAvailable.get(lKey);
+    boolean allocated;
     ClearCLImage lImage;
     if (lSpecificImagesAvailable == null
         || lSpecificImagesAvailable.isEmpty())
     {
+      allocated = true;
       lImage = allocateImage(pDataType, pDimensions);
-      freeMem();
     }
     else
     {
+      allocated = false;
       lImage = lSpecificImagesAvailable.pop();
     }
     assert !mImagesInUse.contains(lImage);
     mImagesInUse.add(lImage);
-    // System.err.printf("REQuest: %32s - %s\n", lKey.toString(), debug());
+    debug("%10s - %s  %32s - %s\n",
+          pName == null ? "<unnamed>" : pName,
+          allocated ? "allocate:" : "reuse:   ",
+          lKey.toString(),
+          toString());
+    if (allocated)
+      freeMemIfNecessaryAndPossible();
     return lImage;
   }
 
   public void releaseImage(ClearCLImage pImage)
+  {
+    releaseImage(null, pImage);
+  }
+
+  public void releaseImage(String pName, ClearCLImage pImage)
   {
     assert mImagesInUse.contains(pImage);
     mImagesInUse.remove(pImage);
@@ -162,20 +214,11 @@ public class FastFusionMemoryPool implements AutoCloseable
       mImagesAvailable.put(lKey, lSpecificImagesAvailable);
     }
     lSpecificImagesAvailable.push(pImage);
-    freeMem();
-    // System.err.printf("RELease: %32s - %s\n", getKey(pImage).toString(),
-    // debug());
-  }
-
-  private void recordAccess(Pair<ImageChannelDataType, List<Long>> pKey)
-  {
-    mImageAccess.remove(pKey);
-    mImageAccess.add(pKey);
-  }
-
-  public boolean isInUse(ClearCLImage pImage)
-  {
-    return pImage != null && mImagesInUse.contains(pImage);
+    debug("%10s - release:   %32s - %s\n",
+          pName == null ? "<unnamed>" : pName,
+          lKey.toString(),
+          toString());
+    freeMemIfNecessaryAndPossible();
   }
 
   @Override
@@ -191,21 +234,60 @@ public class FastFusionMemoryPool implements AutoCloseable
 
   public void free(boolean pFreeImagesInUse)
   {
+    debug("Freeing all available images\n");
     for (Stack<ClearCLImage> lStack : mImagesAvailable.values())
-    {
-      for (ClearCLImage lImage : lStack)
-        freeImage(lImage);
-      lStack.clear();
-    }
+      while (!lStack.isEmpty())
+        freeImage(lStack.pop());
     mImagesAvailable.clear();
     mImageAccess.clear();
     if (pFreeImagesInUse)
     {
-      for (ClearCLImage lImage : mImagesInUse)
+      debug("Freeing all images that are still in use\n");
+      Iterator<ClearCLImage> it = mImagesInUse.iterator();
+      while (it.hasNext())
+      {
+        ClearCLImage lImage = it.next();
+        it.remove();
         freeImage(lImage);
-      mImagesInUse.clear();
+      }
+      assert mCurrentSize == 0;
     }
-    assert mCurrentSize == 0;
+  }
+
+  public long getPreferredSizeLimit()
+  {
+    return mPoolSize;
+  }
+
+  public void setPreferredSizeLimit(long pPreferredPoolSize)
+  {
+    mPoolSize = pPreferredPoolSize;
+  }
+
+  public long getCurrentSize()
+  {
+    return mCurrentSize;
+  }
+
+  public boolean isInUse(ClearCLImage pImage)
+  {
+    return pImage != null && mImagesInUse.contains(pImage);
+  }
+
+  @Override
+  public String toString()
+  {
+    return String.format("MemoryPool(used = %2d, avail = %2d, memory = %4.0f | %.0f MB)",
+                         mImagesInUse.size(),
+                         getAvailableImagesCount(),
+                         mCurrentSize / (1024d * 1024d),
+                         mPoolSize / (1024d * 1024d));
+  }
+
+  private void recordAccess(Pair<ImageChannelDataType, List<Long>> pKey)
+  {
+    mImageAccess.remove(pKey);
+    mImageAccess.add(pKey);
   }
 
   private Pair<ImageChannelDataType, List<Long>> getKey(final ClearCLImage pImage)
@@ -221,28 +303,18 @@ public class FastFusionMemoryPool implements AutoCloseable
                        Arrays.asList(ArrayUtils.toObject(pDimensions)));
   }
 
-  @Override
-  public String toString()
-  {
-    return debug()
-           + String.format(", current size = %.1f MB, preferred size limit = %.1f MB",
-                           mCurrentSize / (1024d * 1024d),
-                           mPoolSize / (1024d * 1024d));
-  }
-
-  private String debug()
-  {
-    return String.format("MemoryPool(in use = %2d, available = %2d)",
-                         mImagesInUse.size(),
-                         getAvailableImagesCount());
-  }
-
   private int getAvailableImagesCount()
   {
     int lNumAvailable = 0;
     for (Stack<ClearCLImage> lStack : mImagesAvailable.values())
       lNumAvailable += lStack.size();
     return lNumAvailable;
+  }
+
+  private void debug(String format, Object... args)
+  {
+    if (mDebug)
+      cDebugOut.printf(format, args);
   }
 
 }

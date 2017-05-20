@@ -206,7 +206,10 @@ public class StackGeneratorTests
                                        new StackGenerator(lSimulator);
 
         FastFusionMemoryPool lMemoryPool =
-                                         FastFusionMemoryPool.get(lContext);)
+                                         FastFusionMemoryPool.getInstance(lContext,
+                                                                          1000 * 1024
+                                                                                    * 1024,
+                                                                          true);)
     {
       FastFusionEngine lFastFusionEngine =
                                          new FastFusionEngine(lContext);
