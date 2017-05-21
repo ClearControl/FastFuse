@@ -16,10 +16,9 @@ import fastfuse.stackgen.ImageCache;
 import fastfuse.stackgen.LightSheetMicroscopeSimulatorXWing;
 import fastfuse.stackgen.StackGenerator;
 import fastfuse.tasks.AverageTask;
+import fastfuse.tasks.CompositeTasks;
 import fastfuse.tasks.DownsampleXYbyHalfTask;
-import fastfuse.tasks.GaussianBlurTask;
-import fastfuse.tasks.MemoryReleaseTask;
-import fastfuse.tasks.RegistrationTask;
+import fastfuse.tasks.DownsampleXYbyHalfTask.Type;
 import fastfuse.tasks.TenengradFusionTask;
 
 import org.junit.Test;
@@ -175,7 +174,7 @@ public class StackGeneratorTests
 
     boolean mUseCache = true;
 
-    int lMaxCameraResolution = 256;
+    int lMaxCameraResolution = 256 * 2;
 
     int lStackDepth = 32;
 
@@ -207,93 +206,74 @@ public class StackGeneratorTests
 
         FastFusionMemoryPool lMemoryPool =
                                          FastFusionMemoryPool.getInstance(lContext,
-                                                                          1000 * 1024
+                                                                          100 * 1024
                                                                                     * 1024,
                                                                           true);)
     {
+
       FastFusionEngine lFastFusionEngine =
                                          new FastFusionEngine(lContext);
 
-      // downsampling
-      for (int cam = 0; cam < 2; cam++)
-        for (int sheet = 0; sheet < 4; sheet++)
-        {
-          String imgStr = String.format("C%dL%d", cam, sheet);
-          lFastFusionEngine.addTask(new DownsampleXYbyHalfTask(imgStr,
-                                                               imgStr + "-lr"));
-          lFastFusionEngine.addTask(new MemoryReleaseTask(imgStr
-                                                          + "-lr",
-                                                          imgStr));
-        }
+      lFastFusionEngine.addTasks(DownsampleXYbyHalfTask.applyAndReleaseInputs(Type.Median,
+                                                                              "-lr",
+                                                                              "C0L0",
+                                                                              "C0L1",
+                                                                              "C0L2",
+                                                                              "C0L3",
+                                                                              "C1L0",
+                                                                              "C1L1",
+                                                                              "C1L2",
+                                                                              "C1L3"));
 
-      lFastFusionEngine.addTask(new TenengradFusionTask("C0L0-lr",
-                                                        "C0L1-lr",
-                                                        "C0L2-lr",
-                                                        "C0L3-lr",
-                                                        "C0",
-                                                        ImageChannelDataType.Float));
+      // lFastFusionEngine.addTasks(IdentityTask.withSuffix("-lr",
+      // "C0L0",
+      // "C0L1",
+      // "C0L2",
+      // "C0L3",
+      // "C1L0",
+      // "C1L1",
+      // "C1L2",
+      // "C1L3"));
 
-      lFastFusionEngine.addTask(new TenengradFusionTask("C1L0-lr",
-                                                        "C1L1-lr",
-                                                        "C1L2-lr",
-                                                        "C1L3-lr",
-                                                        "C1",
-                                                        ImageChannelDataType.Float));
+      lFastFusionEngine.addTasks(TenengradFusionTask.applyAndReleaseInputs("C0L0-lr",
+                                                                           "C0L1-lr",
+                                                                           "C0L2-lr",
+                                                                           "C0L3-lr",
+                                                                           "C0",
+                                                                           ImageChannelDataType.Float));
 
-      lFastFusionEngine.addTask(new MemoryReleaseTask("C0",
-                                                      "C0L0-lr",
-                                                      "C0L1-lr",
-                                                      "C0L2-lr",
-                                                      "C0L3-lr"));
-      lFastFusionEngine.addTask(new MemoryReleaseTask("C1",
-                                                      "C1L0-lr",
-                                                      "C1L1-lr",
-                                                      "C1L2-lr",
-                                                      "C1L3-lr"));
+      lFastFusionEngine.addTasks(TenengradFusionTask.applyAndReleaseInputs("C1L0-lr",
+                                                                           "C1L1-lr",
+                                                                           "C1L2-lr",
+                                                                           "C1L3-lr",
+                                                                           "C1",
+                                                                           ImageChannelDataType.Float));
 
       /*FlipTask lFlipTask = new FlipTask("C1", "C1flipped");
       lFlipTask.setFlipX(true);
       lFastFusionEngine.addTask(lFlipTask);/**/
 
       int[] lKernelSizes = new int[]
-      { 3, 3, 3 };
+      { 5, 5, 5 };
       float[] lKernelSigmas = new float[]
       { 0.5f, 0.5f, 0.5f };
 
-      lFastFusionEngine.addTask(new GaussianBlurTask("C0",
-                                                     "C0blur",
-                                                     lKernelSigmas,
-                                                     lKernelSizes));
-      lFastFusionEngine.addTask(new GaussianBlurTask("C1",
-                                                     "C1blur",
-                                                     lKernelSigmas,
-                                                     lKernelSizes));
+      lFastFusionEngine.addTasks(CompositeTasks.registerWithBlurPreprocessing("C0",
+                                                                              "C1",
+                                                                              "C1reg",
+                                                                              lKernelSigmas,
+                                                                              lKernelSizes,
+                                                                              AffineMatrix.scaling(-1,
+                                                                                                   1,
+                                                                                                   1),
+                                                                              true));
 
-      RegistrationTask lRegisteredFusionTask =
-                                             new RegistrationTask("C0blur",
-                                                                  "C1blur",
-                                                                  "C0",
-                                                                  "C1",
-                                                                  "C1reg");
-      lRegisteredFusionTask.setZeroTransformMatrix(AffineMatrix.scaling(-1,
-                                                                        1,
-                                                                        1));
+      lFastFusionEngine.addTasks(TenengradFusionTask.applyAndReleaseInputs("C0",
+                                                                           "C1reg",
+                                                                           "C",
+                                                                           ImageChannelDataType.UnsignedInt16));
 
-      lFastFusionEngine.addTask(lRegisteredFusionTask);
-
-      lFastFusionEngine.addTask(new MemoryReleaseTask("C1reg",
-                                                      "C0blur",
-                                                      "C1blur",
-                                                      "C1"));
-
-      lFastFusionEngine.addTask(new TenengradFusionTask("C0",
-                                                        "C1reg",
-                                                        "C",
-                                                        ImageChannelDataType.UnsignedInt16));
-
-      lFastFusionEngine.addTask(new MemoryReleaseTask("C",
-                                                      "C0",
-                                                      "C1reg"));
+      ///////////
 
       lStackGenerator.setCenteredROI(lMaxCameraResolution / 2,
                                      lMaxCameraResolution);

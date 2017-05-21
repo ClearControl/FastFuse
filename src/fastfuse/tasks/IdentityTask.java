@@ -1,5 +1,8 @@
 package fastfuse.tasks;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import fastfuse.FastFusionEngineInterface;
 
 /**
@@ -12,6 +15,18 @@ public class IdentityTask extends TaskBase implements TaskInterface
 {
 
   private final String mSrcImageSlotKey, mDstImageSlotKey;
+
+  public static List<TaskInterface> withSuffix(String pSuffix,
+                                               String... pImageKeys)
+  {
+    List<TaskInterface> lTaskList = new ArrayList<>();
+    for (String lSrcKey : pImageKeys)
+    {
+      String lDstKey = lSrcKey + pSuffix;
+      lTaskList.add(new IdentityTask(lSrcKey, lDstKey));
+    }
+    return lTaskList;
+  }
 
   /**
    * Instantiates an identity task.

@@ -1,6 +1,8 @@
 package fastfuse.tasks;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
@@ -36,6 +38,38 @@ public class DownsampleXYbyHalfTask extends TaskBase
     }
 
   };
+
+  public static List<TaskInterface> applyAndReleaseInputs(Type pType,
+                                                          String pSuffix,
+                                                          String... pImageKeys)
+  {
+    return apply(true, pType, pSuffix, pImageKeys);
+  }
+
+  public static List<TaskInterface> applyAndKeepInputs(Type pType,
+                                                       String pSuffix,
+                                                       String... pImageKeys)
+  {
+    return apply(false, pType, pSuffix, pImageKeys);
+  }
+
+  public static List<TaskInterface> apply(boolean pReleaseInput,
+                                          Type pType,
+                                          String pSuffix,
+                                          String... pImageKeys)
+  {
+    List<TaskInterface> lTaskList = new ArrayList<>();
+    for (String lSrcKey : pImageKeys)
+    {
+      String lDstKey = lSrcKey + pSuffix;
+      lTaskList.add(new DownsampleXYbyHalfTask(lSrcKey,
+                                               lDstKey,
+                                               pType));
+      if (pReleaseInput)
+        lTaskList.add(new MemoryReleaseTask(lDstKey, lSrcKey));
+    }
+    return lTaskList;
+  }
 
   public DownsampleXYbyHalfTask(String pSrcImageKey,
                                 String pDstImageKey)

@@ -1,5 +1,8 @@
 package fastfuse.tasks;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
 import clearcl.enums.ImageChannelDataType;
@@ -15,6 +18,77 @@ import org.apache.commons.lang3.tuple.MutablePair;
 public class TenengradFusionTask extends FusionTaskBase
                                  implements TaskInterface
 {
+
+  public static List<TaskInterface> applyAndReleaseInputs(String pImageASlotKey,
+                                                          String pImageBSlotKey,
+                                                          String pImageCSlotKey,
+                                                          String pImageDSlotKey,
+                                                          String pDestImageSlotKey,
+                                                          ImageChannelDataType pDestinationImageDataType)
+  {
+    return apply(true,
+                 pImageASlotKey,
+                 pImageBSlotKey,
+                 pImageCSlotKey,
+                 pImageDSlotKey,
+                 pDestImageSlotKey,
+                 pDestinationImageDataType);
+  }
+
+  public static List<TaskInterface> applyAndReleaseInputs(String pImageASlotKey,
+                                                          String pImageBSlotKey,
+                                                          String pDestImageSlotKey,
+                                                          ImageChannelDataType pDestinationImageDataType)
+  {
+    return apply(true,
+                 pImageASlotKey,
+                 pImageBSlotKey,
+                 pDestImageSlotKey,
+                 pDestinationImageDataType);
+  }
+
+  public static List<TaskInterface> apply(boolean pReleaseInputs,
+                                          String pImageASlotKey,
+                                          String pImageBSlotKey,
+                                          String pDestImageSlotKey,
+                                          ImageChannelDataType pDestinationImageDataType)
+  {
+    List<TaskInterface> lTaskList = new ArrayList<>();
+    lTaskList.add(new TenengradFusionTask(pImageASlotKey,
+                                          pImageBSlotKey,
+                                          pDestImageSlotKey,
+                                          pDestinationImageDataType));
+    if (pReleaseInputs)
+      lTaskList.add(new MemoryReleaseTask(pDestImageSlotKey,
+                                          pImageASlotKey,
+                                          pImageBSlotKey));
+    return lTaskList;
+  }
+
+  public static List<TaskInterface> apply(boolean pReleaseInputs,
+                                          String pImageASlotKey,
+                                          String pImageBSlotKey,
+                                          String pImageCSlotKey,
+                                          String pImageDSlotKey,
+                                          String pDestImageSlotKey,
+                                          ImageChannelDataType pDestinationImageDataType)
+  {
+    List<TaskInterface> lTaskList = new ArrayList<>();
+    lTaskList.add(new TenengradFusionTask(pImageASlotKey,
+                                          pImageBSlotKey,
+                                          pImageCSlotKey,
+                                          pImageDSlotKey,
+                                          pDestImageSlotKey,
+                                          pDestinationImageDataType));
+    if (pReleaseInputs)
+      lTaskList.add(new MemoryReleaseTask(pDestImageSlotKey,
+                                          pImageASlotKey,
+                                          pImageBSlotKey,
+                                          pImageCSlotKey,
+                                          pImageDSlotKey));
+    return lTaskList;
+  }
+
   /**
    * Instantiates a Tenengrad fusion task given the keys for two input images
    * and destination image
@@ -30,10 +104,10 @@ public class TenengradFusionTask extends FusionTaskBase
    */
   public TenengradFusionTask(String pImageASlotKey,
                              String pImageBSlotKey,
-                             String pDestImageKey,
+                             String pDestImageSlotKey,
                              ImageChannelDataType pDestinationImageDataType)
   {
-    super(pImageASlotKey, pImageBSlotKey, pDestImageKey);
+    super(pImageASlotKey, pImageBSlotKey, pDestImageSlotKey);
     setupProgram(TenengradFusionTask.class, "./kernels/fusion.cl");
     mDestinationImageDataType = pDestinationImageDataType;
   }
