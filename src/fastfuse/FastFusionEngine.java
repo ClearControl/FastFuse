@@ -1,7 +1,5 @@
 package fastfuse;
 
-import static java.lang.Math.min;
-
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.Map;
@@ -182,6 +180,16 @@ public class FastFusionEngine implements FastFusionEngineInterface
   }
 
   @Override
+  public void removeImage(String pSlotKey)
+  {
+    MutablePair<Boolean, ClearCLImage> lMutablePair =
+                                                    getImageSlotsMap().remove(pSlotKey);
+    assert lMutablePair != null;
+    FastFusionMemoryPool.get().releaseImage(pSlotKey,
+                                            lMutablePair.getRight());
+  }
+
+  @Override
   public boolean isImageAvailable(String pSlotKey)
   {
     MutablePair<Boolean, ClearCLImage> lMutablePair =
@@ -214,36 +222,27 @@ public class FastFusionEngine implements FastFusionEngineInterface
   @Override
   public int executeSeveralTasks(int pMaxNumberOfTasks)
   {
-    ArrayList<TaskInterface> lReadyTasks = new ArrayList<>();
+    return executeSeveralTasks(0, pMaxNumberOfTasks);
+  }
 
+  private int executeSeveralTasks(int pExecutedNumberOfTasks,
+                                  int pMaxNumberOfTasks)
+  {
+    assert 0 <= pExecutedNumberOfTasks
+           && pExecutedNumberOfTasks <= pMaxNumberOfTasks;
+    if (pExecutedNumberOfTasks == pMaxNumberOfTasks)
+      return pExecutedNumberOfTasks;
     Set<String> lAvailableImageKeys = getAvailableImagesSlotKeys();
-
-    for (TaskInterface lFusionTask : mFusionTasks)
-      if (!mExecutedFusionTasks.contains(lFusionTask))
-      {
-        boolean lImagesAvailable =
-                                 lFusionTask.checkIfRequiredImagesAvailable(lAvailableImageKeys);
-
-        if (lImagesAvailable)
-          lReadyTasks.add(lFusionTask);
-
-      }
-
-    int lNumberOfTasksReady = lReadyTasks.size();
-
-    if (lNumberOfTasksReady == 0)
-      return 0;
-
-    lNumberOfTasksReady = min(lNumberOfTasksReady, pMaxNumberOfTasks);
-
-    for (int i = 0; i < lNumberOfTasksReady; i++)
-    {
-      TaskInterface lTask = lReadyTasks.get(i);
-      lTask.enqueue(this, true);
-      mExecutedFusionTasks.add(lTask);
-    }
-
-    return lNumberOfTasksReady;
+    for (TaskInterface lTask : mFusionTasks)
+      if (!mExecutedFusionTasks.contains(lTask))
+        if (lTask.checkIfRequiredImagesAvailable(lAvailableImageKeys))
+        {
+          lTask.enqueue(this, true);
+          mExecutedFusionTasks.add(lTask);
+          return executeSeveralTasks(pExecutedNumberOfTasks + 1,
+                                     pMaxNumberOfTasks);
+        }
+    return pExecutedNumberOfTasks;
   }
 
   /**

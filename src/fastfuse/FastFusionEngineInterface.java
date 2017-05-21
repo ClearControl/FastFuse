@@ -1,6 +1,7 @@
 package fastfuse;
 
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ExecutionException;
 
@@ -35,6 +36,12 @@ public interface FastFusionEngineInterface
    */
   void addTask(TaskInterface pTask);
 
+  default void addTasks(List<TaskInterface> pTaskList)
+  {
+    for (TaskInterface pTask : pTaskList)
+      addTask(pTask);
+  }
+
   /**
    * Returns the tasks in this Fast Fusion engine
    * 
@@ -50,6 +57,8 @@ public interface FastFusionEngineInterface
    * @return image
    */
   ClearCLImage getImage(String pSlotKey);
+
+  void removeImage(String pSlotKey);
 
   /**
    * An image is available for computation once its data has been successfully

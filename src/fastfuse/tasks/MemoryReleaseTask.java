@@ -5,7 +5,6 @@ import java.util.List;
 
 import clearcl.ClearCLImage;
 import fastfuse.FastFusionEngineInterface;
-import fastfuse.FastFusionMemoryPool;
 
 public class MemoryReleaseTask extends TaskBase
                                implements TaskInterface
@@ -33,7 +32,8 @@ public class MemoryReleaseTask extends TaskBase
     for (String lImageKey : mImageKeysToRelease)
     {
       ClearCLImage lImage = pFastFusionEngine.getImage(lImageKey);
-      FastFusionMemoryPool.get().releaseImage(lImageKey, lImage);
+      // remove from fusion engine and release memory
+      pFastFusionEngine.removeImage(lImageKey);
     }
     return true;
   }

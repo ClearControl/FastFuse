@@ -92,13 +92,14 @@ public abstract class TaskBase implements TaskInterface
   }
 
   @Override
-  public abstract boolean enqueue(FastFusionEngineInterface pStackFuser,
+  public abstract boolean enqueue(FastFusionEngineInterface pFastFusionEngine,
                                   boolean pWaitToFinish);
 
   @Override
   public String toString()
   {
-    return String.format("FusionTaskBase [mRequiredImagesSlotKeysSet=%s, mKernels=%s]",
+    return String.format("%30s [mRequiredImagesSlotKeysSet=%s, mKernels=%s]",
+                         getClass().getSimpleName(),
                          mRequiredImagesSlotKeysSet,
                          mKernelMap.toString());
   }
