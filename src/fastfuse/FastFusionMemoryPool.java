@@ -186,7 +186,7 @@ public class FastFusionMemoryPool implements AutoCloseable
     assert !mImagesInUse.contains(lImage);
     mImagesInUse.add(lImage);
     debug("%10s - %s  %32s - %s\n",
-          pName == null ? "<unnamed>" : pName,
+          prettyName(pName, 10),
           allocated ? "allocate:" : "reuse:   ",
           lKey.toString(),
           toString());
@@ -215,7 +215,7 @@ public class FastFusionMemoryPool implements AutoCloseable
     }
     lSpecificImagesAvailable.push(pImage);
     debug("%10s - release:   %32s - %s\n",
-          pName == null ? "<unnamed>" : pName,
+          prettyName(pName, 10),
           lKey.toString(),
           toString());
     freeMemIfNecessaryAndPossible();
@@ -301,6 +301,15 @@ public class FastFusionMemoryPool implements AutoCloseable
   {
     return Pair.create(pDataType,
                        Arrays.asList(ArrayUtils.toObject(pDimensions)));
+  }
+
+  private String prettyName(String pName, int pLength)
+  {
+    if (pName == null)
+      return "<unnamed>";
+    if (pName.length() <= pLength)
+      return pName;
+    return pName.substring(0, pLength - 3) + "...";
   }
 
   private int getAvailableImagesCount()

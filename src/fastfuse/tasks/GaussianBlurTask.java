@@ -75,7 +75,7 @@ public class GaussianBlurTask extends TaskBase
                          boolean pWaitToFinish)
   {
 
-    ClearCLImage lSrcImage, lDstImage, mTmpImage = null;
+    ClearCLImage lSrcImage, lDstImage, lTmpImage = null;
     lSrcImage = pFastFusionEngine.getImage(mSrcImageKey);
     assert TaskHelper.allowedDataType(lSrcImage);
 
@@ -96,7 +96,7 @@ public class GaussianBlurTask extends TaskBase
     {
       assert lSrcImage.getChannelDataType() == ImageChannelDataType.Float;
       // get temporary image
-      mTmpImage =
+      lTmpImage =
                 FastFusionMemoryPool.get()
                                     .requestImage(ImageChannelDataType.Float,
                                                   lSrcImage.getDimensions());
@@ -125,19 +125,19 @@ public class GaussianBlurTask extends TaskBase
                              mKernelSizes[0],
                              mKernelSigmas[0]);
         lKernel.run(pWaitToFinish);
-        lKernel.setArguments(mTmpImage,
+        lKernel.setArguments(lTmpImage,
                              lDstImage,
                              1,
                              mKernelSizes[1],
                              mKernelSigmas[1]);
         lKernel.run(pWaitToFinish);
         lKernel.setArguments(lDstImage,
-                             mTmpImage,
+                             lTmpImage,
                              2,
                              mKernelSizes[2],
                              mKernelSigmas[2]);
         lKernel.run(pWaitToFinish);
-        FastFusionMemoryPool.get().releaseImage(mTmpImage);
+        FastFusionMemoryPool.get().releaseImage(lTmpImage);
         lFlagAndDstImage.setLeft(true);
         return true;
       }
