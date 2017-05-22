@@ -235,7 +235,7 @@ public class StackGeneratorTests
       // "C1L3"));
 
       float[] lSigmasWeightBlur = new float[]
-      { 15, 15, .1f };
+      { 15, 15, 5 };
 
       lFastFusionEngine.addTasks(CompositeTasks.fuseWithSmoothWeights("C0",
                                                                       ImageChannelDataType.Float,
@@ -260,7 +260,7 @@ public class StackGeneratorTests
       lFastFusionEngine.addTask(lFlipTask);/**/
 
       int[] lKernelSizes = new int[]
-      { 5, 5, 5 };
+      { 3, 3, 3 };
       float[] lKernelSigmas = new float[]
       { 0.5f, 0.5f, 0.5f };
 
@@ -284,7 +284,7 @@ public class StackGeneratorTests
       lFastFusionEngine.addTasks(CompositeTasks.subtractBlurredCopyFromFloatImage("CC",
                                                                                   "C",
                                                                                   new float[]
-                                                                                  { 15f, 15f, 15f }, true, ImageChannelDataType.UnsignedInt16));
+                                                                                  { 30, 30, 10 }, true, ImageChannelDataType.UnsignedInt16));
 
       ///////////
 
@@ -326,8 +326,8 @@ public class StackGeneratorTests
         lFastFusionEngine.executeAllTasks();
       }
 
-      lCache.saveImage("C0", lFastFusionEngine.getImage("C0"));
-      lCache.saveImage("C1", lFastFusionEngine.getImage("C1"));
+      // lCache.saveImage("C0", lFastFusionEngine.getImage("C0"));
+      // lCache.saveImage("C1", lFastFusionEngine.getImage("C1"));
 
       ClearCLImageViewer lView =
                                ClearCLImageViewer.view(lFastFusionEngine.getImage("C"));
