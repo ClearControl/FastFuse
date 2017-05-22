@@ -66,7 +66,7 @@ public class GaussianBlurTask extends TaskBase
 
   private int getKernelSize(float sigma)
   {
-    int lSize = (int) Math.round(2 * 3.5 * sigma);
+    int lSize = Math.max(1, (int) Math.round(2 * 3.5 * sigma));
     return (lSize % 2 == 1) ? lSize : lSize + 1;
   }
 

@@ -38,6 +38,11 @@ public abstract class TaskBase implements TaskInterface
   public TaskBase(String... pSlotKeys)
   {
     super();
+    addRequiredImages(pSlotKeys);
+  }
+
+  protected void addRequiredImages(String... pSlotKeys)
+  {
     for (String lSlotKey : pSlotKeys)
       mRequiredImagesSlotKeysSet.add(lSlotKey);
   }
