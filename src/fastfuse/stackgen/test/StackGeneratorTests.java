@@ -19,7 +19,6 @@ import fastfuse.tasks.AverageTask;
 import fastfuse.tasks.CompositeTasks;
 import fastfuse.tasks.DownsampleXYbyHalfTask;
 import fastfuse.tasks.DownsampleXYbyHalfTask.Type;
-import fastfuse.tasks.TenengradFusionTask;
 
 import org.junit.Test;
 
@@ -235,19 +234,26 @@ public class StackGeneratorTests
       // "C1L2",
       // "C1L3"));
 
-      lFastFusionEngine.addTasks(TenengradFusionTask.applyAndReleaseInputs("C0L0-lr",
-                                                                           "C0L1-lr",
-                                                                           "C0L2-lr",
-                                                                           "C0L3-lr",
-                                                                           "C0",
-                                                                           ImageChannelDataType.Float));
+      float[] lSigmasWeightBlur = new float[]
+      { 15, 15, .1f };
 
-      lFastFusionEngine.addTasks(TenengradFusionTask.applyAndReleaseInputs("C1L0-lr",
-                                                                           "C1L1-lr",
-                                                                           "C1L2-lr",
-                                                                           "C1L3-lr",
-                                                                           "C1",
-                                                                           ImageChannelDataType.Float));
+      lFastFusionEngine.addTasks(CompositeTasks.fuseWithSmoothWeights("C0",
+                                                                      ImageChannelDataType.Float,
+                                                                      lSigmasWeightBlur,
+                                                                      true,
+                                                                      "C0L0-lr",
+                                                                      "C0L1-lr",
+                                                                      "C0L2-lr",
+                                                                      "C0L3-lr"));
+
+      lFastFusionEngine.addTasks(CompositeTasks.fuseWithSmoothWeights("C1",
+                                                                      ImageChannelDataType.Float,
+                                                                      lSigmasWeightBlur,
+                                                                      true,
+                                                                      "C1L0-lr",
+                                                                      "C1L1-lr",
+                                                                      "C1L2-lr",
+                                                                      "C1L3-lr"));
 
       /*FlipTask lFlipTask = new FlipTask("C1", "C1flipped");
       lFlipTask.setFlipX(true);
@@ -268,10 +274,17 @@ public class StackGeneratorTests
                                                                                                    1),
                                                                               true));
 
-      lFastFusionEngine.addTasks(TenengradFusionTask.applyAndReleaseInputs("C0",
-                                                                           "C1reg",
-                                                                           "C",
-                                                                           ImageChannelDataType.UnsignedInt16));
+      lFastFusionEngine.addTasks(CompositeTasks.fuseWithSmoothWeights("CC",
+                                                                      ImageChannelDataType.Float,
+                                                                      lSigmasWeightBlur,
+                                                                      true,
+                                                                      "C0",
+                                                                      "C1reg"));
+
+      lFastFusionEngine.addTasks(CompositeTasks.subtractBlurredCopyFromFloatImage("CC",
+                                                                                  "C",
+                                                                                  new float[]
+                                                                                  { 15f, 15f, 15f }, true, ImageChannelDataType.UnsignedInt16));
 
       ///////////
 

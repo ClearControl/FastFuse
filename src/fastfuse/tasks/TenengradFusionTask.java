@@ -1,5 +1,6 @@
 package fastfuse.tasks;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -171,36 +172,35 @@ public class TenengradFusionTask extends FusionTaskBase
 
     try
     {
-      String lKernelName =
-                         String.format("fuse_%d_image%s_to_image%s",
-                                       mInputImagesSlotKeys.length,
-                                       lImageA.isFloat() ? "f" : "ui",
-                                       lImageFused.isFloat() ? "f"
-                                                             : "ui");
-      lKernel = getKernel(lImageFused.getContext(), lKernelName);
+      String lKernelName = String.format("tenengrad_fusion_%d_images",
+                                         mInputImagesSlotKeys.length);
+      lKernel = getKernel(lImageFused.getContext(),
+                          lKernelName,
+                          TaskHelper.getOpenCLDefines(lImageA,
+                                                      lImageFused));
+
+      // kernel arguments are given by name
+      lKernel.setArgument("src1", lImageA);
+      lKernel.setArgument("src2", lImageB);
+      if (mInputImagesSlotKeys.length == 4)
+      {
+        lKernel.setArgument("src3", lImageC);
+        lKernel.setArgument("src4", lImageD);
+      }
+      lKernel.setArgument("dst", lImageFused);
+
+      lKernel.setGlobalSizes(lImageFused);
+
+      lKernel.run(pWaitToFinish);
+      pImageAndFlag.setLeft(true);
+
+      return true;
     }
-    catch (Exception e)
+    catch (IOException e)
     {
       e.printStackTrace();
       return false;
     }
 
-    // kernel arguments are given by name
-    lKernel.setArgument("src1", lImageA);
-    lKernel.setArgument("src2", lImageB);
-    if (mInputImagesSlotKeys.length == 4)
-    {
-      lKernel.setArgument("src3", lImageC);
-      lKernel.setArgument("src4", lImageD);
-    }
-    lKernel.setArgument("dst", lImageFused);
-
-    lKernel.setGlobalSizes(lImageFused);
-
-    // System.out.println("running kernel");
-    lKernel.run(pWaitToFinish);
-    pImageAndFlag.setLeft(true);
-
-    return true;
   }
 }
