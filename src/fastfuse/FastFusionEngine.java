@@ -103,7 +103,10 @@ public class FastFusionEngine implements FastFusionEngineInterface
                                                                   pImageChannelDataType,
                                                                   pDimensions);
 
-    lPair.getRight().readFrom(pImageData, true);
+    FastFusionMemoryPool.get()
+                        .freeMemoryIfNecessaryAndRun(() -> lPair.getRight()
+                                                                .readFrom(pImageData,
+                                                                          true));
     lPair.setLeft(true);
   }
 
@@ -115,7 +118,9 @@ public class FastFusionEngine implements FastFusionEngineInterface
                                                                   pImage.getChannelDataType(),
                                                                   pImage.getDimensions());
 
-    pImage.copyTo(lPair.getRight(), true);
+    FastFusionMemoryPool.get()
+                        .freeMemoryIfNecessaryAndRun(() -> pImage.copyTo(lPair.getRight(),
+                                                                         true));
     lPair.setLeft(true);
   }
 
