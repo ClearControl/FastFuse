@@ -8,11 +8,79 @@ import java.util.UUID;
 import javax.vecmath.Matrix4f;
 
 import clearcl.enums.ImageChannelDataType;
+import fastfuse.tasks.DownsampleXYbyHalfTask.Type;
 
 import org.apache.commons.lang3.ArrayUtils;
 
 public class CompositeTasks
 {
+
+  public static List<TaskInterface> fuseWithSmoothDownsampledWeights(String pDstImageKey,
+                                                                     ImageChannelDataType pDstImageDataType,
+                                                                     float[] pKernelSigmas,
+                                                                     boolean pReleaseSrcImages,
+                                                                     String... pSrcImageKeys)
+  {
+    String lRandomSuffix = UUID.randomUUID().toString();
+    List<TaskInterface> lTaskList = new ArrayList<>();
+
+    int lNumImages = pSrcImageKeys.length;
+    String[] lSrcImageAndWeightKeys = new String[2 * lNumImages];
+
+    for (int i = 0; i < lNumImages; i++)
+    {
+      // define temporary names
+      String lWeightRawKey = String.format("%s-w-%s",
+                                           pSrcImageKeys[i],
+                                           lRandomSuffix);
+      String lWeightSmoothKey = String.format("%s-wb-%s",
+                                              pSrcImageKeys[i],
+                                              lRandomSuffix);
+      String lWeightSmoothDownsampledKey =
+                                         String.format("%s-wbd-%s",
+                                                       pSrcImageKeys[i],
+                                                       lRandomSuffix);
+      // record keys for fusion call
+      lSrcImageAndWeightKeys[i] = pSrcImageKeys[i];
+      lSrcImageAndWeightKeys[lNumImages
+                             + i] = lWeightSmoothDownsampledKey;
+      // compute unnormalized weight from src image
+      lTaskList.add(new TenengradWeightTask(pSrcImageKeys[i],
+                                            lWeightRawKey));
+      // blur raw weight to obtain smooth weight
+      lTaskList.add(new GaussianBlurTask(lWeightRawKey,
+                                         lWeightSmoothKey,
+                                         pKernelSigmas,
+                                         null,
+                                         true));
+      // release raw weight
+      lTaskList.add(new MemoryReleaseTask(lWeightSmoothKey,
+                                          lWeightRawKey));
+      // downsample smooth weight to be used for fusion
+      lTaskList.add(new DownsampleXYbyHalfTask(lWeightSmoothKey,
+                                               lWeightSmoothDownsampledKey,
+                                               Type.Average));
+      // release smooth weight
+      lTaskList.add(new MemoryReleaseTask(lWeightSmoothDownsampledKey,
+                                          lWeightSmoothKey));
+    }
+
+    // fuse images with smooth downsampled weights
+    lTaskList.add(new TenengradAdvancedFusionTask(pDstImageKey,
+                                                  pDstImageDataType,
+                                                  lSrcImageAndWeightKeys));
+    // release smooth downsampled weights
+    lTaskList.add(new MemoryReleaseTask(pDstImageKey,
+                                        ArrayUtils.subarray(lSrcImageAndWeightKeys,
+                                                            lNumImages,
+                                                            2 * lNumImages)));
+    // release src images
+    if (pReleaseSrcImages)
+      lTaskList.add(new MemoryReleaseTask(pDstImageKey,
+                                          pSrcImageKeys));
+
+    return lTaskList;
+  }
 
   public static List<TaskInterface> fuseWithSmoothWeights(String pDstImageKey,
                                                           ImageChannelDataType pDstImageDataType,

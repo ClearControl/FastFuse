@@ -105,8 +105,9 @@ public class FastFusionMemoryPool implements AutoCloseable
   {
     mCurrentSize -= pImage.getSizeInBytes();
     pImage.close();
-    debug("                  free:      %32s - %s\n",
+    debug("                  free:      %32s = %3.0f MB  ->  %s\n",
           getKey(pImage).toString(),
+          pImage.getSizeInBytes() / (1024d * 1024d),
           toString());
   }
 
@@ -179,10 +180,11 @@ public class FastFusionMemoryPool implements AutoCloseable
     }
     assert !mImagesInUse.contains(lImage);
     mImagesInUse.add(lImage);
-    debug("%15s - %s  %32s - %s\n",
+    debug("%15s - %s  %32s = %3.0f MB  ->  %s\n",
           prettyName(pName, 15),
           allocated ? "allocate:" : "reuse:   ",
           lKey.toString(),
+          getSizeInBytes(pDataType, pDimensions) / (1024d * 1024d),
           toString());
     return lImage;
   }
@@ -206,9 +208,10 @@ public class FastFusionMemoryPool implements AutoCloseable
       mImagesAvailable.put(lKey, lSpecificImagesAvailable);
     }
     lSpecificImagesAvailable.push(pImage);
-    debug("%15s - release:   %32s - %s\n",
+    debug("%15s - release:   %32s = %3.0f MB  ->  %s\n",
           prettyName(pName, 15),
           lKey.toString(),
+          pImage.getSizeInBytes() / (1024d * 1024d),
           toString());
     freeMemIfNecessaryAndPossible(0);
   }
