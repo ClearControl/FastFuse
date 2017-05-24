@@ -10,6 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
+import java.util.function.Supplier;
+import java.util.stream.LongStream;
 
 import clearcl.ClearCLContext;
 import clearcl.ClearCLImage;
@@ -87,34 +89,14 @@ public class FastFusionMemoryPool implements AutoCloseable
   private ClearCLImage allocateImage(ImageChannelDataType pDataType,
                                      long... pDimensions)
   {
-    ClearCLImage lImage;
-    try
-    {
-      lImage =
-             mContext.createSingleChannelImage(HostAccessType.ReadWrite,
-                                               KernelAccessType.ReadWrite,
-                                               pDataType,
-                                               pDimensions);
-    }
-    catch (Throwable e1)
-    {
-      try
-      {
-        free(); // free all available images
-        lImage =
-               mContext.createSingleChannelImage(HostAccessType.ReadWrite,
-                                                 KernelAccessType.ReadWrite,
-                                                 pDataType,
-                                                 pDimensions);
-      }
-      catch (Throwable e2)
-      {
-        throw new FastFusionException(e2,
-                                      "Couldn't allocate image of type '%s' with dimensions %s",
-                                      pDataType.toString(),
-                                      Arrays.toString(pDimensions));
-      }
-    }
+    ClearCLImage lImage =
+                        freeMemoryIfNecessaryAndRun(() -> mContext.createSingleChannelImage(HostAccessType.ReadWrite,
+                                                                                            KernelAccessType.ReadWrite,
+                                                                                            pDataType,
+                                                                                            pDimensions),
+                                                    String.format("Couldn't allocate image of type '%s' with dimensions %s",
+                                                                  pDataType.toString(),
+                                                                  Arrays.toString(pDimensions)));
     mCurrentSize += lImage.getSizeInBytes();
     return lImage;
   }
@@ -128,9 +110,17 @@ public class FastFusionMemoryPool implements AutoCloseable
           toString());
   }
 
-  private boolean freeMemIsNecessary()
+  private long getSizeInBytes(ImageChannelDataType pDataType,
+                              long... pDimensions)
   {
-    return mCurrentSize > mPoolSize;
+    long lVolume = LongStream.of(pDimensions).reduce(1,
+                                                     (a, b) -> a * b);
+    return lVolume * pDataType.getNativeType().getSizeInBytes();
+  }
+
+  private boolean freeMemIsNecessary(long pAdditional)
+  {
+    return (mCurrentSize + pAdditional) > mPoolSize;
   }
 
   private boolean freeMemIsPossible()
@@ -138,9 +128,9 @@ public class FastFusionMemoryPool implements AutoCloseable
     return getAvailableImagesCount() > 0;
   }
 
-  private void freeMemIfNecessaryAndPossible()
+  private void freeMemIfNecessaryAndPossible(long pAdditional)
   {
-    if (freeMemIsNecessary() && freeMemIsPossible())
+    if (freeMemIsNecessary(pAdditional) && freeMemIsPossible())
     {
       assert !mImageAccess.isEmpty();
       for (Pair<ImageChannelDataType, List<Long>> lKeyAccess : mImageAccess)
@@ -148,7 +138,8 @@ public class FastFusionMemoryPool implements AutoCloseable
         Stack<ClearCLImage> lImageStack =
                                         mImagesAvailable.get(lKeyAccess);
         assert lImageStack != null;
-        while (!lImageStack.isEmpty() && freeMemIsNecessary())
+        while (!lImageStack.isEmpty()
+               && freeMemIsNecessary(pAdditional))
         {
           freeImage(lImageStack.pop());
         }
@@ -175,6 +166,9 @@ public class FastFusionMemoryPool implements AutoCloseable
     if (lSpecificImagesAvailable == null
         || lSpecificImagesAvailable.isEmpty())
     {
+      // try to free memory if new allocation will go beyond preferred size
+      freeMemIfNecessaryAndPossible(getSizeInBytes(pDataType,
+                                                   pDimensions));
       allocated = true;
       lImage = allocateImage(pDataType, pDimensions);
     }
@@ -190,8 +184,6 @@ public class FastFusionMemoryPool implements AutoCloseable
           allocated ? "allocate:" : "reuse:   ",
           lKey.toString(),
           toString());
-    if (allocated)
-      freeMemIfNecessaryAndPossible();
     return lImage;
   }
 
@@ -218,7 +210,50 @@ public class FastFusionMemoryPool implements AutoCloseable
           prettyName(pName, 15),
           lKey.toString(),
           toString());
-    freeMemIfNecessaryAndPossible();
+    freeMemIfNecessaryAndPossible(0);
+  }
+
+  public void freeMemoryIfNecessaryAndRun(Runnable pRunnable)
+  {
+    freeMemoryIfNecessaryAndRun(pRunnable, null);
+  }
+
+  public <T> T freeMemoryIfNecessaryAndRun(Supplier<T> pSupplier)
+  {
+    return freeMemoryIfNecessaryAndRun(pSupplier, null);
+  }
+
+  public void freeMemoryIfNecessaryAndRun(Runnable pRunnable,
+                                          String pErrorMsg)
+  {
+    freeMemoryIfNecessaryAndRun(() -> {
+      pRunnable.run();
+      return true;
+    }, pErrorMsg);
+  }
+
+  public <T> T freeMemoryIfNecessaryAndRun(Supplier<T> pSupplier,
+                                           String pErrorMsg)
+  {
+    try
+    {
+      return pSupplier.get();
+    }
+    catch (Throwable e)
+    {
+      if (freeMemIsPossible())
+      {
+        debug("Problem occurred during freeMemoryIfNecessaryAndRun(): %s\n",
+              e.getMessage());
+        free();
+        return pSupplier.get();
+      }
+      else
+      {
+        String lErrorMsg = pErrorMsg != null ? pErrorMsg : "";
+        throw new FastFusionException(e, lErrorMsg);
+      }
+    }
   }
 
   @Override

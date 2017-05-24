@@ -20,6 +20,7 @@ import clearcl.ClearCLProgram;
 import clearcl.enums.ImageChannelDataType;
 import clearcl.util.MatrixUtils;
 import coremem.enums.NativeTypeEnum;
+import fastfuse.FastFusionMemoryPool;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.math3.analysis.MultivariateFunction;
@@ -348,7 +349,7 @@ public class Registration
                          pImageSource,
                          getTransformMatrixBuffer(floatArray(theta)));
     lKernel.setGlobalSizes(mGlobalSize);
-    lKernel.run(mParams.getWaitToFinish());
+    runKernel(lKernel, mParams.getWaitToFinish());
   }
 
   private ClearCLBuffer getTransformMatrixBuffer(float... theta)
@@ -407,7 +408,7 @@ public class Registration
         lSrcBuffers = i == s ? pBuffers : mBuffers[i - 1];
         lKernel.setArguments(mBuffers[i][0], lSrcBuffers[0]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
-        lKernel.run(mParams.getWaitToFinish());
+        runKernel(lKernel, mParams.getWaitToFinish());
       }
       return reduceMeanOnHost(mBuffers[lNumReductions - 1][0]);
 
@@ -422,7 +423,7 @@ public class Registration
                              mBuffers[i][1],
                              lSrcBuffers[1]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
-        lKernel.run(mParams.getWaitToFinish());
+        runKernel(lKernel, mParams.getWaitToFinish());
       }
       return reduceMeanOnHost(mBuffers[lNumReductions - 1][0],
                               mBuffers[lNumReductions - 1][1]);
@@ -440,7 +441,7 @@ public class Registration
                              mBuffers[i][2],
                              lSrcBuffers[2]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
-        lKernel.run(mParams.getWaitToFinish());
+        runKernel(lKernel, mParams.getWaitToFinish());
       }
       return reduceMeanOnHost(mBuffers[lNumReductions - 1][0],
                               mBuffers[lNumReductions - 1][1],
@@ -493,7 +494,7 @@ public class Registration
                          mImageB);
     lKernel.setGlobalSizes(mGlobalSize);
     lKernel.setLocalSizes(mLocalSize);
-    lKernel.run(mParams.getWaitToFinish());
+    runKernel(lKernel, mParams.getWaitToFinish());
     return reduceMean(mBuffers[0][0], mBuffers[0][1]);
   }
 
@@ -503,7 +504,7 @@ public class Registration
     lKernel.setArguments(mBuffers[0][0], pImage, pMean);
     lKernel.setGlobalSizes(mGlobalSize);
     lKernel.setLocalSizes(mLocalSize);
-    lKernel.run(mParams.getWaitToFinish());
+    runKernel(lKernel, mParams.getWaitToFinish());
     return reduceMean(mBuffers[0][0])[0];
   }
 
@@ -524,7 +525,7 @@ public class Registration
                          meanBapprox);
     lKernel.setGlobalSizes(mGlobalSize);
     lKernel.setLocalSizes(mLocalSize);
-    lKernel.run(mParams.getWaitToFinish());
+    runKernel(lKernel, mParams.getWaitToFinish());
     float[] reds = reduceMean(mBuffers[0][0],
                               mBuffers[0][1],
                               mBuffers[0][2]);
@@ -568,6 +569,12 @@ public class Registration
       e.printStackTrace();
     }
     return lKernels;
+  }
+
+  private void runKernel(ClearCLKernel lKernel, boolean pWaitToFinish)
+  {
+    FastFusionMemoryPool.get()
+                        .freeMemoryIfNecessaryAndRun(() -> lKernel.run(pWaitToFinish));
   }
 
   private static float[] floatArray(double[] d)

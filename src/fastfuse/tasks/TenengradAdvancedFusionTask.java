@@ -90,7 +90,7 @@ public class TenengradAdvancedFusionTask extends TaskBase
         lKernel.setArgument(i++, lWeight);
 
       lKernel.setGlobalSizes(lDstImage.getDimensions());
-      lKernel.run(pWaitToFinish);
+      runKernel(lKernel, pWaitToFinish);
       lFlagAndDstImage.setLeft(true);
       return true;
     }

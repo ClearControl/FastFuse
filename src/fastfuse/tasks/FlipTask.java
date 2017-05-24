@@ -8,7 +8,6 @@ import fastfuse.FastFusionException;
 import org.apache.commons.lang3.tuple.MutablePair;
 
 /**
- * Fuses two stacks using the average method.
  *
  * @author royer
  */
@@ -106,6 +105,8 @@ public class FlipTask extends TaskBase implements TaskInterface
       throw new FastFusionException("Fusion task %s received a null image",
                                     this);
 
+    assert TaskHelper.allowedDataType(lInputImage);
+
     MutablePair<Boolean, ClearCLImage> lDestImageAndFlag =
                                                          pFastFusionEngine.ensureImageAllocated(mDestImageSlotKey,
                                                                                                 lInputImage.getChannelDataType(),
@@ -137,7 +138,7 @@ public class FlipTask extends TaskBase implements TaskInterface
     lKernel.setGlobalSizes(lDestImage);
 
     // System.out.println("running kernel");
-    lKernel.run(pWaitToFinish);
+    runKernel(lKernel, pWaitToFinish);
     lDestImageAndFlag.setLeft(true);
 
     return true;

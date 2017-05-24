@@ -11,6 +11,7 @@ import clearcl.ClearCLContext;
 import clearcl.ClearCLKernel;
 import clearcl.ClearCLProgram;
 import fastfuse.FastFusionEngineInterface;
+import fastfuse.FastFusionMemoryPool;
 
 /**
  * Base class providing common fields and methods for all task implementations
@@ -85,6 +86,15 @@ public abstract class TaskBase implements TaskInterface
     ClearCLKernel lKernel = mProgram.createKernel(pKernelName);
     mKernelMap.put(pKernelName, lKernel);
     return lKernel;
+  }
+
+  protected void runKernel(ClearCLKernel lKernel,
+                           boolean pWaitToFinish)
+  {
+    FastFusionMemoryPool.get()
+                        .freeMemoryIfNecessaryAndRun(() -> lKernel.run(pWaitToFinish),
+                                                     String.format("Couldn't free memory to run kernel '%s'",
+                                                                   lKernel.getName()));
   }
 
   @Override

@@ -124,19 +124,19 @@ public class GaussianBlurTask extends TaskBase
                              0,
                              mKernelSizes[0],
                              mKernelSigmas[0]);
-        lKernel.run(pWaitToFinish);
+        runKernel(lKernel, pWaitToFinish);
         lKernel.setArguments(lTmpImage,
                              lDstImage,
                              1,
                              mKernelSizes[1],
                              mKernelSigmas[1]);
-        lKernel.run(pWaitToFinish);
+        runKernel(lKernel, pWaitToFinish);
         lKernel.setArguments(lDstImage,
                              lTmpImage,
                              2,
                              mKernelSizes[2],
                              mKernelSigmas[2]);
-        lKernel.run(pWaitToFinish);
+        runKernel(lKernel, pWaitToFinish);
         FastFusionMemoryPool.get().releaseImage(lTmpImage);
         lFlagAndDstImage.setLeft(true);
         return true;
@@ -156,7 +156,7 @@ public class GaussianBlurTask extends TaskBase
                              mKernelSigmas[0],
                              mKernelSigmas[1],
                              mKernelSigmas[2]);
-        lKernel.run(pWaitToFinish);
+        runKernel(lKernel, pWaitToFinish);
         lFlagAndDstImage.setLeft(true);
         return true;
       }

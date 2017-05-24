@@ -133,7 +133,7 @@ public class DownsampleXYbyHalfTask extends TaskBase
                                                       lDstImage));
       lKernel.setGlobalSizes(lDstImage.getDimensions());
       lKernel.setArguments(lDstImage, lSrcImage);
-      lKernel.run(pWaitToFinish);
+      runKernel(lKernel, pWaitToFinish);
       lFlagAndDstImage.setLeft(true);
       return true;
     }

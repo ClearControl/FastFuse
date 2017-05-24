@@ -191,7 +191,7 @@ public class TenengradFusionTask extends FusionTaskBase
 
       lKernel.setGlobalSizes(lImageFused);
 
-      lKernel.run(pWaitToFinish);
+      runKernel(lKernel, pWaitToFinish);
       pImageAndFlag.setLeft(true);
 
       return true;
