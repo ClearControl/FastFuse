@@ -29,14 +29,13 @@ public class TenengradWeightTask extends TaskBase
   {
     ClearCLImage lSrcImage, lDstImage;
     lSrcImage = pFastFusionEngine.getImage(mSrcImageKey);
+    assert TaskHelper.allowedDataType(lSrcImage);
 
     MutablePair<Boolean, ClearCLImage> lFlagAndDstImage =
                                                         pFastFusionEngine.ensureImageAllocated(mDstImageKey,
                                                                                                ImageChannelDataType.Float,
                                                                                                lSrcImage.getDimensions());
     lDstImage = lFlagAndDstImage.getRight();
-
-    assert TaskHelper.allowedDataType(lSrcImage, lDstImage);
 
     try
     {

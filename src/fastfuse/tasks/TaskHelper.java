@@ -1,7 +1,9 @@
 package fastfuse.tasks;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.stream.Stream;
 
 import clearcl.ClearCLImage;
 import clearcl.enums.ImageChannelDataType;
@@ -14,25 +16,59 @@ public class TaskHelper
            || pDataType == ImageChannelDataType.UnsignedInt16;
   }
 
+  private static boolean allowedDataType(ClearCLImage pImage)
+  {
+    return allowedDataType(pImage.getChannelDataType());
+  }
+
   public static boolean allowedDataType(ImageChannelDataType... pDataTypes)
   {
-    if (pDataTypes == null)
+    if (pDataTypes == null || pDataTypes.length == 0)
       return true;
-    for (ImageChannelDataType lDataType : pDataTypes)
-      if (!allowedDataType(lDataType))
-        return false;
-    return true;
+    return Stream.of(pDataTypes)
+                 .allMatch(TaskHelper::allowedDataType);
   }
 
   public static boolean allowedDataType(ClearCLImage... pImages)
   {
-    if (pImages == null)
+    if (pImages == null || pImages.length == 0)
       return true;
-    ImageChannelDataType[] dataTypes =
-                                     new ImageChannelDataType[pImages.length];
-    for (int i = 0; i < pImages.length; i++)
-      dataTypes[i] = pImages[i].getChannelDataType();
-    return allowedDataType(dataTypes);
+    return Stream.of(pImages).allMatch(TaskHelper::allowedDataType);
+  }
+
+  public static boolean allSameDataType(ImageChannelDataType pDataType,
+                                        ClearCLImage... pImages)
+  {
+    if (pImages == null || pImages.length == 0)
+      return true;
+    return Stream.of(pImages)
+                 .allMatch(x -> x.getChannelDataType() == pDataType);
+  }
+
+  public static boolean allSameDataType(ClearCLImage... pImages)
+  {
+    if (pImages == null || pImages.length == 0)
+      return true;
+    return allSameDataType(pImages[0].getChannelDataType(), pImages);
+  }
+
+  public static boolean allSameAllowedDataType(ClearCLImage... pImages)
+  {
+    if (pImages == null || pImages.length == 0)
+      return true;
+    ImageChannelDataType lDataType = pImages[0].getChannelDataType();
+    return allowedDataType(lDataType)
+           && allSameDataType(lDataType, pImages);
+  }
+
+  public static boolean allSameDimensions(ClearCLImage... pImages)
+  {
+    if (pImages == null || pImages.length == 0)
+      return true;
+    long[] lDims = pImages[0].getDimensions();
+    return Stream.of(pImages)
+                 .allMatch(x -> Arrays.equals(lDims,
+                                              x.getDimensions()));
   }
 
   public static Map<String, Object> getOpenCLDefines(ImageChannelDataType pDTypeIn,
