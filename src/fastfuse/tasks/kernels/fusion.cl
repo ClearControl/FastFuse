@@ -71,56 +71,6 @@ __kernel void tenengrad_weight_unnormalized(write_only image3d_t dst, read_only 
 
 
 __kernel void tenengrad_fusion_with_provided_weights_2_images(
-  write_only image3d_t dst,
-  read_only image3d_t src1, read_only image3d_t src2,
-  read_only image3d_t weight1, read_only image3d_t weight2
-)
-{
-  const int i = get_global_id(0), j = get_global_id(1), k = get_global_id(2);
-  const int4 coord = (int4)(i,j,k,0);
-
-  float w1 = read_imagef(weight1,sampler,coord).x;
-  float w2 = read_imagef(weight2,sampler,coord).x;
-
-  const float wsum = w1 + w2 + 1e-30f; // add small epsilon to avoid wsum = 0
-  w1 /= wsum;  w2 /= wsum;
-
-  const float  v1 = (float)READ_IMAGE(src1,sampler,coord).x;
-  const float  v2 = (float)READ_IMAGE(src2,sampler,coord).x;
-  const float res = w1*v1 + w2*v2;
-
-  WRITE_IMAGE(dst,coord,(DTYPE_OUT)res);
-}
-
-
-__kernel void tenengrad_fusion_with_provided_weights_4_images(
-  write_only image3d_t dst,
-  read_only image3d_t src1, read_only image3d_t src2, read_only image3d_t src3, read_only image3d_t src4,
-  read_only image3d_t weight1, read_only image3d_t weight2, read_only image3d_t weight3, read_only image3d_t weight4
-)
-{
-  const int i = get_global_id(0), j = get_global_id(1), k = get_global_id(2);
-  const int4 coord = (int4)(i,j,k,0);
-
-  float w1 = read_imagef(weight1,sampler,coord).x;
-  float w2 = read_imagef(weight2,sampler,coord).x;
-  float w3 = read_imagef(weight3,sampler,coord).x;
-  float w4 = read_imagef(weight4,sampler,coord).x;
-
-  const float wsum = w1 + w2 + w3 + w4 + 1e-30f; // add small epsilon to avoid wsum = 0
-  w1 /= wsum;  w2 /= wsum;  w3 /= wsum;  w4 /= wsum;
-
-  const float  v1 = (float)READ_IMAGE(src1,sampler,coord).x;
-  const float  v2 = (float)READ_IMAGE(src2,sampler,coord).x;
-  const float  v3 = (float)READ_IMAGE(src3,sampler,coord).x;
-  const float  v4 = (float)READ_IMAGE(src4,sampler,coord).x;
-  const float res = w1*v1 + w2*v2 + w3*v3 + w4*v4;
-
-  WRITE_IMAGE(dst,coord,(DTYPE_OUT)res);
-}
-
-
-__kernel void tenengrad_fusion_with_provided_downsampled_weights_2_images(
   write_only image3d_t dst, const int factor,
   read_only image3d_t src1, read_only image3d_t src2,
   read_only image3d_t weight1, read_only image3d_t weight2
@@ -146,7 +96,7 @@ __kernel void tenengrad_fusion_with_provided_downsampled_weights_2_images(
 }
 
 
-__kernel void tenengrad_fusion_with_provided_downsampled_weights_4_images(
+__kernel void tenengrad_fusion_with_provided_weights_4_images(
   write_only image3d_t dst, const int factor,
   read_only image3d_t src1, read_only image3d_t src2, read_only image3d_t src3, read_only image3d_t src4,
   read_only image3d_t weight1, read_only image3d_t weight2, read_only image3d_t weight3, read_only image3d_t weight4

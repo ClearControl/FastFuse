@@ -81,10 +81,9 @@ public class TenengradAdvancedFusionTask extends TaskBase
 
     try
     {
-      String lKernelName = String.format(
-                                         lDimRatio == 1 ? "tenengrad_fusion_with_provided_weights_%d_images"
-                                                        : "tenengrad_fusion_with_provided_downsampled_weights_%d_images",
-                                         lNumImages);
+      String lKernelName =
+                         String.format("tenengrad_fusion_with_provided_weights_%d_images",
+                                       lNumImages);
       ClearCLKernel lKernel =
                             getKernel(lDstImage.getContext(),
                                       lKernelName,
@@ -92,8 +91,7 @@ public class TenengradAdvancedFusionTask extends TaskBase
                                                                   lDstImage));
       int i = 0;
       lKernel.setArgument(i++, lDstImage);
-      if (lDimRatio != 1)
-        lKernel.setArgument(i++, lDimRatio);
+      lKernel.setArgument(i++, lDimRatio);
       for (ClearCLImage lImage : lSrcImages)
         lKernel.setArgument(i++, lImage);
       for (ClearCLImage lWeight : lSrcWeights)
