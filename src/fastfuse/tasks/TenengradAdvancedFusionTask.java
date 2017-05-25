@@ -1,6 +1,7 @@
 package fastfuse.tasks;
 
 import java.io.IOException;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import clearcl.ClearCLImage;
@@ -25,13 +26,12 @@ public class TenengradAdvancedFusionTask extends TaskBase
     assert pSrcImageAndWeightKeys != null
            && pSrcImageAndWeightKeys.length % 2 == 0;
     int lNumImages = pSrcImageAndWeightKeys.length / 2;
-    mSrcImageKeys = new String[lNumImages];
-    mSrcWeightKeys = new String[lNumImages];
-    for (int i = 0; i < lNumImages; i++)
-    {
-      mSrcImageKeys[i] = pSrcImageAndWeightKeys[i];
-      mSrcWeightKeys[i] = pSrcImageAndWeightKeys[lNumImages + i];
-    }
+    mSrcImageKeys = IntStream.range(0, lNumImages)
+                             .mapToObj(i -> pSrcImageAndWeightKeys[i])
+                             .toArray(String[]::new);
+    mSrcWeightKeys = IntStream.range(lNumImages, 2 * lNumImages)
+                              .mapToObj(i -> pSrcImageAndWeightKeys[i])
+                              .toArray(String[]::new);
     mDstImageKey = pDstImageKey;
     mDstImageDataType = pDstImageDataType;
     setupProgram(TenengradAdvancedFusionTask.class,
@@ -61,7 +61,6 @@ public class TenengradAdvancedFusionTask extends TaskBase
     assert TaskHelper.allowedDataType(lDstImageDataType);
     assert TaskHelper.allSameDataType(ImageChannelDataType.Float,
                                       lSrcWeights);
-
     // get and check dimensions
     assert TaskHelper.allSameDimensions(lSrcImages);
     assert TaskHelper.allSameDimensions(lSrcWeights);
