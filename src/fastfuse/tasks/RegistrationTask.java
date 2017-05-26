@@ -49,8 +49,8 @@ public class RegistrationTask extends TaskBase implements
   private double[] mInitTransform = new double[]
   { 0, 0, 0, 0, 0, 0 };
 
-  private double mTranslationRadius = 20;
-  private double mRotationRadius = 10;
+  private double mTranslationSearchRadius = 20;
+  private double mRotationSearchRadius = 10;
 
   ///////////////////////////////////////////////////////////////////////////
 
@@ -197,34 +197,34 @@ public class RegistrationTask extends TaskBase implements
   public double[] getUpperBounds()
   {
     return new double[]
-    { +mTranslationRadius,
-      +mTranslationRadius,
-      +mTranslationRadius,
-      +mRotationRadius,
-      +mRotationRadius,
-      +mRotationRadius };
+    { +mTranslationSearchRadius,
+      +mTranslationSearchRadius,
+      +mTranslationSearchRadius,
+      +mRotationSearchRadius,
+      +mRotationSearchRadius,
+      +mRotationSearchRadius };
   }
 
   @Override
   public double[] getLowerBounds()
   {
     return new double[]
-    { -mTranslationRadius,
-      -mTranslationRadius,
-      -mTranslationRadius,
-      -mRotationRadius,
-      -mRotationRadius,
-      -mRotationRadius };
+    { -mTranslationSearchRadius,
+      -mTranslationSearchRadius,
+      -mTranslationSearchRadius,
+      -mRotationSearchRadius,
+      -mRotationSearchRadius,
+      -mRotationSearchRadius };
   }
 
-  public void setTranslationRadius(double pTranslationRadius)
+  public void setTranslationSearchRadius(double pTranslationSearchRadius)
   {
-    mTranslationRadius = pTranslationRadius;
+    mTranslationSearchRadius = pTranslationSearchRadius;
   }
 
-  public void setRotationRadius(double pRotationRadius)
+  public void setRotationSearchRadius(double pRotationSearchRadius)
   {
-    mRotationRadius = pRotationRadius;
+    mRotationSearchRadius = pRotationSearchRadius;
   }
 
   @Override
@@ -288,7 +288,7 @@ public class RegistrationTask extends TaskBase implements
     double[] lb = getLowerBounds(), ub = getUpperBounds();
     for (int i = 0; i < theta.length; i++)
     {
-      double c = i < 3 ? mTranslationRadius : mRotationRadius;
+      double c = i < 3 ? mTranslationSearchRadius : mRotationSearchRadius;
       lPerturbedTheta[i] = theta[i] + mRNG.nextUniform(-c, c);
       lPerturbedTheta[i] = Math.max(lb[i], lPerturbedTheta[i]);
       lPerturbedTheta[i] = Math.min(ub[i], lPerturbedTheta[i]);
