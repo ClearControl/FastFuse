@@ -1,5 +1,7 @@
 package fastfuse.tasks;
 
+import java.util.concurrent.CopyOnWriteArrayList;
+
 import javax.vecmath.Matrix4f;
 
 import clearcl.ClearCLImage;
@@ -46,24 +48,13 @@ public class RegistrationTask extends TaskBase implements
   private double[] mInitTransform = new double[]
   { 0, 0, 0, 0, 0, 0 };
 
-  private static final double cTranslationRadius = 20;
-  private static final double cRotationRadius = 10;
-  private double[] mLowerBound = new double[]
-  { -cTranslationRadius,
-    -cTranslationRadius,
-    -cTranslationRadius,
-    -cRotationRadius,
-    -cRotationRadius,
-    -cRotationRadius };
-  private double[] mUpperBound = new double[]
-  { +cTranslationRadius,
-    +cTranslationRadius,
-    +cTranslationRadius,
-    +cRotationRadius,
-    +cRotationRadius,
-    +cRotationRadius };
+  private double mTranslationRadius = 20;
+  private double mRotationRadius = 10;
 
   ///////////////////////////////////////////////////////////////////////////
+
+  private CopyOnWriteArrayList<RegistrationListener> mListenerList =
+                                                                   new CopyOnWriteArrayList<>();
 
   private final RandomDataGenerator mRNG = new RandomDataGenerator();
   private boolean mWaitToFinish = true;
@@ -127,6 +118,10 @@ public class RegistrationTask extends TaskBase implements
     {
       // find best registration
       lBestTransform = mRegistration.register();
+
+      // notify listeners
+      notifyListenersOfNewComputedTheta(lBestTransform);
+
       // and use as initial transform for next time
       setInitialTransformation(lBestTransform);
 
@@ -152,6 +147,9 @@ public class RegistrationTask extends TaskBase implements
     mRegistration.transform(lRegisteredImage,
                             lImageD,
                             lBestTransform);
+    // notify listeners
+    notifyListenersOfNewUsedTheta(lBestTransform);
+
     lFlagAndRegisteredImage.setLeft(true);
     return true;
   }
@@ -160,7 +158,6 @@ public class RegistrationTask extends TaskBase implements
    * Interface implementations for fastfuse.registration.RegistrationParameter
    */
 
-  @Override
   public void setMaxNumberOfEvaluations(int pMaxNumberOfEvaluations)
   {
     assert pMaxNumberOfEvaluations > 0;
@@ -179,7 +176,6 @@ public class RegistrationTask extends TaskBase implements
     return mScaleZ;
   }
 
-  @Override
   public void setScaleZ(float pScaleZ)
   {
     assert pScaleZ > 0;
@@ -189,27 +185,35 @@ public class RegistrationTask extends TaskBase implements
   @Override
   public double[] getUpperBounds()
   {
-    return mUpperBound;
+    return new double[]
+    { +mTranslationRadius,
+      +mTranslationRadius,
+      +mTranslationRadius,
+      +mRotationRadius,
+      +mRotationRadius,
+      +mRotationRadius };
   }
 
   @Override
   public double[] getLowerBounds()
   {
-    return mLowerBound;
+    return new double[]
+    { -mTranslationRadius,
+      -mTranslationRadius,
+      -mTranslationRadius,
+      -mRotationRadius,
+      -mRotationRadius,
+      -mRotationRadius };
   }
 
-  @Override
-  public void setLowerBounds(double[] pLowerBound)
+  public void setTranslationRadius(double pTranslationRadius)
   {
-    assert 6 == pLowerBound.length;
-    mLowerBound = pLowerBound;
+    mTranslationRadius = pTranslationRadius;
   }
 
-  @Override
-  public void setUpperBounds(double[] pUpperBound)
+  public void setRotationRadius(double pRotationRadius)
   {
-    assert 6 == pUpperBound.length;
-    mUpperBound = pUpperBound;
+    mRotationRadius = pRotationRadius;
   }
 
   @Override
@@ -218,7 +222,6 @@ public class RegistrationTask extends TaskBase implements
     return mZeroTransformMatrix;
   }
 
-  @Override
   public void setZeroTransformMatrix(Matrix4f pZeroTransformMatrix)
   {
     mZeroTransformMatrix = new Matrix4f(pZeroTransformMatrix);
@@ -230,7 +233,6 @@ public class RegistrationTask extends TaskBase implements
     return mInitTransform;
   }
 
-  @Override
   public void setInitialTransformation(double... theta)
   {
     assert theta.length == 6;
@@ -255,7 +257,6 @@ public class RegistrationTask extends TaskBase implements
     return mNumberOfRestarts;
   }
 
-  @Override
   public void setNumberOfRestarts(int pRestarts)
   {
     assert pRestarts >= 0 && pRestarts < 50;
@@ -276,7 +277,7 @@ public class RegistrationTask extends TaskBase implements
     double[] lb = getLowerBounds(), ub = getUpperBounds();
     for (int i = 0; i < theta.length; i++)
     {
-      double c = i < 3 ? cTranslationRadius : cRotationRadius;
+      double c = i < 3 ? mTranslationRadius : mRotationRadius;
       lPerturbedTheta[i] = theta[i] + mRNG.nextUniform(-c, c);
       lPerturbedTheta[i] = Math.max(lb[i], lPerturbedTheta[i]);
       lPerturbedTheta[i] = Math.min(ub[i], lPerturbedTheta[i]);
@@ -293,6 +294,30 @@ public class RegistrationTask extends TaskBase implements
   public void setWaitToFinish(boolean pWaitToFinish)
   {
     mWaitToFinish = pWaitToFinish;
+  }
+
+  private void notifyListenersOfNewComputedTheta(double... theta)
+  {
+    for (RegistrationListener lRegistrationListener : mListenerList)
+      lRegistrationListener.newComputedTheta(theta);
+  }
+
+  private void notifyListenersOfNewUsedTheta(double... theta)
+  {
+    for (RegistrationListener lRegistrationListener : mListenerList)
+      lRegistrationListener.newUsedTheta(theta);
+  }
+
+  /**
+   * Adds a registration listener
+   * 
+   * @param pRegistrationListener
+   *          registration listener
+   */
+  public void addListener(RegistrationListener pRegistrationListener)
+  {
+    if (!mListenerList.contains(pRegistrationListener))
+      mListenerList.add(pRegistrationListener);
   }
 
 }
