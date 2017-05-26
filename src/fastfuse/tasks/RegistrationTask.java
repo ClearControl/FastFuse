@@ -1,5 +1,6 @@
 package fastfuse.tasks;
 
+import java.util.Arrays;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 import javax.vecmath.Matrix4f;
@@ -8,8 +9,10 @@ import clearcl.ClearCLImage;
 import clearcl.enums.ImageChannelDataType;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.registration.AffineMatrix;
+import fastfuse.registration.OnlineSmoothingFilter;
 import fastfuse.registration.Registration;
 import fastfuse.registration.RegistrationParameter;
+import fastfuse.registration.SimpleExponentialSmoothing;
 
 import org.apache.commons.lang3.tuple.MutablePair;
 import org.apache.commons.math3.random.RandomDataGenerator;
@@ -43,6 +46,10 @@ public class RegistrationTask extends TaskBase implements
   private float mScaleZ = 4;
 
   private Matrix4f mZeroTransformMatrix = AffineMatrix.identity();
+
+  private OnlineSmoothingFilter<double[]> mSmoother =
+                                                    new SimpleExponentialSmoothing(6,
+                                                                                   0.1);
 
   // initial transformation (transX, transY, transZ, rotX, rotY, rotZ)
   // rotation angles in degrees around center of volume
@@ -130,17 +137,26 @@ public class RegistrationTask extends TaskBase implements
       // find best registration
       lBestTransform = mRegistration.register();
 
-      // notify listeners
-      notifyListenersOfNewComputedTheta(lBestTransform);
-
-      // and use as initial transform for next time
-      setInitialTransformation(lBestTransform);
-
       mRegistration.setImages(lImageC, lImageD);
       double lBestScoreOriginalImages =
                                       mRegistration.computeScore(lBestTransform);
       System.out.printf("score = %.6f for best transformation on original images\n",
                         lBestScoreOriginalImages);
+
+      // notify listeners
+      notifyListenersOfNewComputedTheta(lBestTransform);
+
+      // temporal smoothing of transformation parameters
+      lBestTransform = mSmoother.update(lBestTransform);
+
+      // use smoothed parameters as initial ones for next time
+      setInitialTransformation(lBestTransform);
+
+      lBestScoreOriginalImages =
+                               mRegistration.computeScore(lBestTransform);
+      System.out.printf("---\nscore = %.6f: %s\nfor smoothed transformation on original images\n",
+                        lBestScoreOriginalImages,
+                        Arrays.toString(lBestTransform));
     }
     catch (Throwable e)
     {
@@ -288,7 +304,8 @@ public class RegistrationTask extends TaskBase implements
     double[] lb = getLowerBounds(), ub = getUpperBounds();
     for (int i = 0; i < theta.length; i++)
     {
-      double c = i < 3 ? mTranslationSearchRadius : mRotationSearchRadius;
+      double c = i < 3 ? mTranslationSearchRadius
+                       : mRotationSearchRadius;
       lPerturbedTheta[i] = theta[i] + mRNG.nextUniform(-c, c);
       lPerturbedTheta[i] = Math.max(lb[i], lPerturbedTheta[i]);
       lPerturbedTheta[i] = Math.min(ub[i], lPerturbedTheta[i]);
