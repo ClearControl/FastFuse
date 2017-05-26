@@ -18,6 +18,7 @@ import clearcl.ClearCLImage;
 import clearcl.enums.HostAccessType;
 import clearcl.enums.ImageChannelDataType;
 import clearcl.enums.KernelAccessType;
+import clearcl.exceptions.OpenCLException;
 
 import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.math3.util.Pair;
@@ -244,19 +245,35 @@ public class FastFusionMemoryPool implements AutoCloseable
     }
     catch (Throwable e)
     {
-      if (freeMemIsPossible())
+      debug("Problem occurred during freeMemoryIfNecessaryAndRun(): %s\n",
+            e.getMessage());
+      if (isMemoryAllocationFailure(e))
       {
-        debug("Problem occurred during freeMemoryIfNecessaryAndRun(): %s\n",
-              e.getMessage());
-        free();
-        return pSupplier.get();
+        if (freeMemIsPossible())
+        {
+          free();
+          return pSupplier.get();
+        }
+        else
+        {
+          String lErrorMsg = pErrorMsg != null ? pErrorMsg : "";
+          throw new FastFusionException(e, lErrorMsg);
+        }
       }
       else
-      {
-        String lErrorMsg = pErrorMsg != null ? pErrorMsg : "";
-        throw new FastFusionException(e, lErrorMsg);
-      }
+        throw e;
     }
+  }
+
+  private boolean isMemoryAllocationFailure(Throwable e)
+  {
+    boolean foundIt = e instanceof OpenCLException
+                      && ((OpenCLException) e).getErrorCode() == -4;
+    if (foundIt)
+      return true;
+    else
+      return (e.getCause() == null) ? false
+                                    : isMemoryAllocationFailure(e.getCause());
   }
 
   @Override
