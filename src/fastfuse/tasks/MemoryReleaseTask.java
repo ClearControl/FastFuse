@@ -2,8 +2,8 @@ package fastfuse.tasks;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
-import clearcl.ClearCLImage;
 import fastfuse.FastFusionEngineInterface;
 
 public class MemoryReleaseTask extends TaskBase
@@ -29,12 +29,9 @@ public class MemoryReleaseTask extends TaskBase
   public boolean enqueue(FastFusionEngineInterface pFastFusionEngine,
                          boolean pWaitToFinish)
   {
-    for (String lImageKey : mImageKeysToRelease)
-    {
-      ClearCLImage lImage = pFastFusionEngine.getImage(lImageKey);
-      // remove from fusion engine and release memory
-      pFastFusionEngine.removeImage(lImageKey);
-    }
+    // remove from fusion engine and release memory
+    Stream.of(mImageKeysToRelease)
+          .forEach(pFastFusionEngine::removeImage);
     return true;
   }
 

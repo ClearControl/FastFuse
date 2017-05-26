@@ -160,15 +160,26 @@ public class TenengradFusionTask extends FusionTaskBase
     ClearCLKernel lKernel = null;
 
     // check image data types
-    ImageChannelDataType lSrcDataType = lImageA.getChannelDataType();
-    ImageChannelDataType lDstDataType =
-                                      lImageFused.getChannelDataType();
-    assert TaskHelper.allowedDataType(lSrcDataType, lDstDataType);
-    assert lImageB.getChannelDataType() == lSrcDataType;
-    assert mInputImagesSlotKeys.length == 2
-           || lImageC.getChannelDataType() == lSrcDataType;
-    assert mInputImagesSlotKeys.length == 2
-           || lImageD.getChannelDataType() == lSrcDataType;
+    assert TaskHelper.allowedDataType(lImageFused);
+    if (mInputImagesSlotKeys.length == 2)
+    {
+      assert TaskHelper.allSameAllowedDataType(lImageA, lImageB);
+      assert TaskHelper.allSameDimensions(lImageA,
+                                          lImageB,
+                                          lImageFused);
+    }
+    else
+    {
+      assert TaskHelper.allSameAllowedDataType(lImageA,
+                                               lImageB,
+                                               lImageC,
+                                               lImageD);
+      assert TaskHelper.allSameDimensions(lImageA,
+                                          lImageB,
+                                          lImageC,
+                                          lImageD,
+                                          lImageFused);
+    }
 
     try
     {
@@ -191,7 +202,7 @@ public class TenengradFusionTask extends FusionTaskBase
 
       lKernel.setGlobalSizes(lImageFused);
 
-      lKernel.run(pWaitToFinish);
+      runKernel(lKernel, pWaitToFinish);
       pImageAndFlag.setLeft(true);
 
       return true;

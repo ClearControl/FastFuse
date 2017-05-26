@@ -71,7 +71,7 @@ __kernel void tenengrad_weight_unnormalized(write_only image3d_t dst, read_only 
 
 
 __kernel void tenengrad_fusion_with_provided_weights_2_images(
-  write_only image3d_t dst,
+  write_only image3d_t dst, const int factor,
   read_only image3d_t src1, read_only image3d_t src2,
   read_only image3d_t weight1, read_only image3d_t weight2
 )
@@ -79,8 +79,11 @@ __kernel void tenengrad_fusion_with_provided_weights_2_images(
   const int i = get_global_id(0), j = get_global_id(1), k = get_global_id(2);
   const int4 coord = (int4)(i,j,k,0);
 
-  float w1 = read_imagef(weight1,sampler,coord).x;
-  float w2 = read_imagef(weight2,sampler,coord).x;
+  const float4 coord_weight = (float4)((i+0.5f)/factor,(j+0.5f)/factor,k+0.5f,0);
+  const sampler_t sampler_weight = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_LINEAR;
+
+  float w1 = read_imagef(weight1,sampler_weight,coord_weight).x;
+  float w2 = read_imagef(weight2,sampler_weight,coord_weight).x;
 
   const float wsum = w1 + w2 + 1e-30f; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;
@@ -94,20 +97,23 @@ __kernel void tenengrad_fusion_with_provided_weights_2_images(
 
 
 __kernel void tenengrad_fusion_with_provided_weights_4_images(
-  write_only image3d_t dst,
+  write_only image3d_t dst, const int factor,
   read_only image3d_t src1, read_only image3d_t src2, read_only image3d_t src3, read_only image3d_t src4,
   read_only image3d_t weight1, read_only image3d_t weight2, read_only image3d_t weight3, read_only image3d_t weight4
 )
 {
   const int i = get_global_id(0), j = get_global_id(1), k = get_global_id(2);
   const int4 coord = (int4)(i,j,k,0);
+  
+  const float4 coord_weight = (float4)((i+0.5f)/factor,(j+0.5f)/factor,k+0.5f,0);
+  const sampler_t sampler_weight = CLK_NORMALIZED_COORDS_FALSE | CLK_ADDRESS_CLAMP_TO_EDGE | CLK_FILTER_LINEAR;
 
-  float w1 = read_imagef(weight1,sampler,coord).x;
-  float w2 = read_imagef(weight2,sampler,coord).x;
-  float w3 = read_imagef(weight3,sampler,coord).x;
-  float w4 = read_imagef(weight4,sampler,coord).x;
+  float w1 = read_imagef(weight1,sampler_weight,coord_weight).x;
+  float w2 = read_imagef(weight2,sampler_weight,coord_weight).x;
+  float w3 = read_imagef(weight3,sampler_weight,coord_weight).x;
+  float w4 = read_imagef(weight4,sampler_weight,coord_weight).x;
 
-  const float wsum = w1 + w2 + w3 + w4 +1e-30f; // add small epsilon to avoid wsum = 0
+  const float wsum = w1 + w2 + w3 + w4 + 1e-30f; // add small epsilon to avoid wsum = 0
   w1 /= wsum;  w2 /= wsum;  w3 /= wsum;  w4 /= wsum;
 
   const float  v1 = (float)READ_IMAGE(src1,sampler,coord).x;

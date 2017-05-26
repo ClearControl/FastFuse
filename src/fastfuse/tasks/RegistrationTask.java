@@ -5,6 +5,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import javax.vecmath.Matrix4f;
 
 import clearcl.ClearCLImage;
+import clearcl.enums.ImageChannelDataType;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.registration.AffineMatrix;
 import fastfuse.registration.Registration;
@@ -106,6 +107,16 @@ public class RegistrationTask extends TaskBase implements
     lImageB = pFastFusionEngine.getImage(mInputImagesSlotKeys[1]);
     lImageC = pFastFusionEngine.getImage(mInputImagesSlotKeys[2]);
     lImageD = pFastFusionEngine.getImage(mInputImagesSlotKeys[3]);
+
+    assert TaskHelper.allSameDataType(ImageChannelDataType.Float,
+                                      lImageA,
+                                      lImageB,
+                                      lImageC,
+                                      lImageD);
+    assert TaskHelper.allSameDimensions(lImageA,
+                                        lImageB,
+                                        lImageC,
+                                        lImageD);
 
     if (mRegistration == null)
       mRegistration = new Registration(this, lImageA, lImageB);

@@ -2,6 +2,7 @@ package fastfuse.tasks;
 
 import java.io.IOException;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 import clearcl.ClearCLImage;
 import clearcl.ClearCLKernel;
@@ -13,7 +14,6 @@ import org.apache.commons.lang3.tuple.MutablePair;
 public class TenengradAdvancedFusionTask extends TaskBase
                                          implements TaskInterface
 {
-
   private final String[] mSrcImageKeys, mSrcWeightKeys;
   private final String mDstImageKey;
   private final ImageChannelDataType mDstImageDataType;
@@ -26,13 +26,12 @@ public class TenengradAdvancedFusionTask extends TaskBase
     assert pSrcImageAndWeightKeys != null
            && pSrcImageAndWeightKeys.length % 2 == 0;
     int lNumImages = pSrcImageAndWeightKeys.length / 2;
-    mSrcImageKeys = new String[lNumImages];
-    mSrcWeightKeys = new String[lNumImages];
-    for (int i = 0; i < lNumImages; i++)
-    {
-      mSrcImageKeys[i] = pSrcImageAndWeightKeys[i];
-      mSrcWeightKeys[i] = pSrcImageAndWeightKeys[lNumImages + i];
-    }
+    mSrcImageKeys = IntStream.range(0, lNumImages)
+                             .mapToObj(i -> pSrcImageAndWeightKeys[i])
+                             .toArray(String[]::new);
+    mSrcWeightKeys = IntStream.range(lNumImages, 2 * lNumImages)
+                              .mapToObj(i -> pSrcImageAndWeightKeys[i])
+                              .toArray(String[]::new);
     mDstImageKey = pDstImageKey;
     mDstImageDataType = pDstImageDataType;
     setupProgram(TenengradAdvancedFusionTask.class,
@@ -43,27 +42,36 @@ public class TenengradAdvancedFusionTask extends TaskBase
   public boolean enqueue(FastFusionEngineInterface pFastFusionEngine,
                          boolean pWaitToFinish)
   {
-
     int lNumImages = mSrcImageKeys.length;
     ClearCLImage[] lSrcImages, lSrcWeights;
 
-    lSrcImages = IntStream.range(0, lNumImages)
-                          .mapToObj(i -> pFastFusionEngine.getImage(mSrcImageKeys[i]))
-                          .toArray(ClearCLImage[]::new);
-    lSrcWeights = IntStream.range(0, lNumImages)
-                           .mapToObj(i -> pFastFusionEngine.getImage(mSrcWeightKeys[i]))
-                           .toArray(ClearCLImage[]::new);
+    lSrcImages = Stream.of(mSrcImageKeys)
+                       .map(pFastFusionEngine::getImage)
+                       .toArray(ClearCLImage[]::new);
+    lSrcWeights = Stream.of(mSrcWeightKeys)
+                        .map(pFastFusionEngine::getImage)
+                        .toArray(ClearCLImage[]::new);
 
     ImageChannelDataType lDstImageDataType = mDstImageDataType;
     if (lDstImageDataType == null)
       lDstImageDataType = lSrcImages[0].getChannelDataType();
 
-    assert TaskHelper.allowedDataType(lSrcImages);
+    // check data types
+    assert TaskHelper.allSameAllowedDataType(lSrcImages);
     assert TaskHelper.allowedDataType(lDstImageDataType);
-    for (ClearCLImage lImage : lSrcImages)
-      assert lImage.getChannelDataType() == lSrcImages[0].getChannelDataType();
-    for (ClearCLImage lWeight : lSrcWeights)
-      assert lWeight.getChannelDataType() == ImageChannelDataType.Float;
+    assert TaskHelper.allSameDataType(ImageChannelDataType.Float,
+                                      lSrcWeights);
+    // get and check dimensions
+    assert TaskHelper.allSameDimensions(lSrcImages);
+    assert TaskHelper.allSameDimensions(lSrcWeights);
+    long[] lImageDims = lSrcImages[0].getDimensions();
+    long[] lWeightDims = lSrcWeights[0].getDimensions();
+    assert lImageDims[0] % lWeightDims[0] == 0
+           && lImageDims[1] % lWeightDims[1] == 0;
+    assert (lImageDims[0] / lWeightDims[0]) == (lImageDims[1]
+                                                / lWeightDims[1]);
+    assert lImageDims[2] == lWeightDims[2];
+    int lDimRatio = (int) (lImageDims[0] / lWeightDims[0]);
 
     MutablePair<Boolean, ClearCLImage> lFlagAndDstImage =
                                                         pFastFusionEngine.ensureImageAllocated(mDstImageKey,
@@ -81,16 +89,16 @@ public class TenengradAdvancedFusionTask extends TaskBase
                                       lKernelName,
                                       TaskHelper.getOpenCLDefines(lSrcImages[0],
                                                                   lDstImage));
-
       int i = 0;
       lKernel.setArgument(i++, lDstImage);
+      lKernel.setArgument(i++, lDimRatio);
       for (ClearCLImage lImage : lSrcImages)
         lKernel.setArgument(i++, lImage);
       for (ClearCLImage lWeight : lSrcWeights)
         lKernel.setArgument(i++, lWeight);
 
       lKernel.setGlobalSizes(lDstImage.getDimensions());
-      lKernel.run(pWaitToFinish);
+      runKernel(lKernel, pWaitToFinish);
       lFlagAndDstImage.setLeft(true);
       return true;
     }

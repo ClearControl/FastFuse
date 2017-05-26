@@ -94,7 +94,7 @@ public class NonnegativeSubtractionTask extends TaskBase
                                                                     lDstImage));
         lKernel.setGlobalSizes(lDstImage.getDimensions());
         lKernel.setArguments(lDstImage, lSrc1Image, lConstant, 0f);
-        lKernel.run(pWaitToFinish);
+        runKernel(lKernel, pWaitToFinish);
         lFlagAndDstImage.setLeft(true);
         return true;
 
@@ -113,7 +113,7 @@ public class NonnegativeSubtractionTask extends TaskBase
                                                                     lDstImage));
         lKernel.setGlobalSizes(lDstImage.getDimensions());
         lKernel.setArguments(lDstImage, lSrc1Image, lSrc2Image, 0f);
-        lKernel.run(pWaitToFinish);
+        runKernel(lKernel, pWaitToFinish);
         lFlagAndDstImage.setLeft(true);
         return true;
       }

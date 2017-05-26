@@ -98,7 +98,7 @@ public class AverageTask extends FusionTaskBase
     lKernel.setGlobalSizes(lImageFused);
 
     // System.out.println("running kernel");
-    lKernel.run(pWaitToFinish);
+    runKernel(lKernel, pWaitToFinish);
     pImageAndFlag.setLeft(true);
 
     return true;

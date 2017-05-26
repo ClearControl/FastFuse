@@ -91,7 +91,7 @@ public class TransformTask extends TaskBase implements TaskInterface
     lKernel.setGlobalSizes(lImageFused);
 
     // System.out.println("running kernel");
-    lKernel.run(pWaitToFinish);
+    runKernel(lKernel, pWaitToFinish);
     lImageAndFlag.setLeft(true);
 
     return true;
