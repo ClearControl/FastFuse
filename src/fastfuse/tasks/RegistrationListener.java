@@ -30,11 +30,21 @@ public interface RegistrationListener
 
   /**
    * Called to notify of a new registration score (typically normalized cross
-   * correlation)
+   * correlation) obtained for the original images
    * 
    * @param pScore
    *          new registration score
    */
-  void notifyListenersOfScore(double pScore);
+  void notifyListenersOfNewScoreForComputedTheta(double pScore);
+
+  /**
+   * Called to notify of a new registration score (typically normalized cross
+   * correlation) obtained for the original images _after_ temporal filtering of
+   * the transform
+   * 
+   * @param pScore
+   *          new registration score
+   */
+  void notifyListenersOfNewScoreForUsedTheta(double pScore);
 
 }

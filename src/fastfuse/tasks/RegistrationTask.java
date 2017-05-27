@@ -10,8 +10,7 @@ import clearcl.enums.ImageChannelDataType;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.registration.Registration;
 import fastfuse.registration.RegistrationParameters;
-import fastfuse.registration.smoothing.OnlineSmoothingFilter;
-import fastfuse.registration.smoothing.SimpleExponentialSmoothing;
+import fastfuse.utils.smoothing.SimpleExponentialSmoothing;
 
 /**
  * Stack registration. This task takes two images, and applies an affine
@@ -24,7 +23,7 @@ public class RegistrationTask extends TaskBase
                               implements TaskInterface
 {
 
-  private OnlineSmoothingFilter<double[]> mSmoother =
+  private SimpleExponentialSmoothing mSmoother =
                                                     new SimpleExponentialSmoothing(6,
                                                                                    0.1);
 
@@ -82,6 +81,17 @@ public class RegistrationTask extends TaskBase
     return mRegistrationParameters;
   }
 
+  /**
+   * Sets the temporal smoothing constant.
+   * 
+   * @param pSmoothingConstant
+   *          smoothing constant
+   */
+  public void setSmoothingConstant(double pSmoothingConstant)
+  {
+    mSmoother.setAlpha(pSmoothingConstant);
+  }
+
   @Override
   public boolean enqueue(FastFusionEngineInterface pFastFusionEngine,
                          boolean pWaitToFinish)
@@ -120,14 +130,13 @@ public class RegistrationTask extends TaskBase
       lBestTransform = mRegistration.register();
 
 
-
       mRegistration.setImages(lImageC, lImageD);
       double lBestScoreOriginalImages =
                                       mRegistration.computeScore(lBestTransform);
       System.out.printf("score = %.6f for best transformation on original images\n",
                         lBestScoreOriginalImages);
 
-      notifyListenersOfScore(lBestScoreOriginalImages);
+      notifyListenersOfNewScoreForComputedTheta(lBestScoreOriginalImages);
 
       // notify listeners
       notifyListenersOfNewComputedTheta(lBestTransform);
@@ -143,10 +152,14 @@ public class RegistrationTask extends TaskBase
       System.out.printf("---\nscore = %.6f: %s\nfor smoothed transformation on original images\n",
                         lBestScoreOriginalImages,
                         Arrays.toString(lBestTransform));
+
+      notifyListenersOfNewScoreForUsedTheta(lBestScoreOriginalImages);
+
     }
     catch (Throwable e)
     {
       System.err.println("Finding an updated volume registration failed (using last best transformation parameters instead).\n");
+
       e.printStackTrace();
     }
 
@@ -167,10 +180,16 @@ public class RegistrationTask extends TaskBase
     return true;
   }
 
-  private void notifyListenersOfScore(double pScore)
+  private void notifyListenersOfNewScoreForComputedTheta(double pScore)
   {
     for (RegistrationListener lRegistrationListener : mListenerList)
-      lRegistrationListener.notifyListenersOfScore(pScore);
+      lRegistrationListener.notifyListenersOfNewScoreForComputedTheta(pScore);
+  }
+
+  private void notifyListenersOfNewScoreForUsedTheta(double pScore)
+  {
+    for (RegistrationListener lRegistrationListener : mListenerList)
+      lRegistrationListener.notifyListenersOfNewScoreForUsedTheta(pScore);
   }
 
   private void notifyListenersOfNewComputedTheta(double... theta)

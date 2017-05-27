@@ -14,6 +14,8 @@ import javax.vecmath.Matrix4f;
 
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.math3.analysis.MultivariateFunction;
+import org.apache.commons.math3.exception.NumberIsTooLargeException;
+import org.apache.commons.math3.exception.NumberIsTooSmallException;
 import org.apache.commons.math3.exception.TooManyEvaluationsException;
 import org.apache.commons.math3.linear.ArrayRealVector;
 import org.apache.commons.math3.optim.InitialGuess;
@@ -305,10 +307,14 @@ public class Registration
                             lBounds,
                             new InitialGuess(theta));
       }
+      catch (NumberIsTooLargeException | NumberIsTooSmallException e)
+      {
+      }
       catch (TooManyEvaluationsException e)
       {
       }
-      double[] currentTheta = null;
+
+      double[] currentTheta = initTheta;
       try
       {
         currentTheta =
@@ -316,7 +322,11 @@ public class Registration
                                                              "currentBest",
                                                              true)).toArray();
       }
-      catch (IllegalAccessException e)
+      catch (NullPointerException e)
+      {
+
+      }
+      catch (Throwable e)
       {
         e.printStackTrace();
       }
