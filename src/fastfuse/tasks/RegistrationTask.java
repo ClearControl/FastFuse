@@ -3,19 +3,15 @@ package fastfuse.tasks;
 import java.util.Arrays;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import javax.vecmath.Matrix4f;
+import org.apache.commons.lang3.tuple.MutablePair;
 
 import clearcl.ClearCLImage;
 import clearcl.enums.ImageChannelDataType;
 import fastfuse.FastFusionEngineInterface;
-import fastfuse.registration.AffineMatrix;
-import fastfuse.registration.OnlineSmoothingFilter;
 import fastfuse.registration.Registration;
-import fastfuse.registration.RegistrationParameter;
-import fastfuse.registration.SimpleExponentialSmoothing;
-
-import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.math3.random.RandomDataGenerator;
+import fastfuse.registration.RegistrationParameters;
+import fastfuse.registration.smoothing.OnlineSmoothingFilter;
+import fastfuse.registration.smoothing.SimpleExponentialSmoothing;
 
 /**
  * Stack registration. This task takes two images, and applies an affine
@@ -24,50 +20,22 @@ import org.apache.commons.math3.random.RandomDataGenerator;
  *
  * @author royer, uschmidt
  */
-public class RegistrationTask extends TaskBase implements
-                              TaskInterface,
-                              RegistrationParameter
+public class RegistrationTask extends TaskBase
+                              implements TaskInterface
 {
-
-  ///////////////////////////////////////////////////////////////////////////
-  // (DEFAULT) PARAMETERS
-  ///////////////////////////////////////////////////////////////////////////
-
-  // must be a power of 2; number of voxels must be evenly divisible by this
-  // suggested: 128 or 256; max value limited by the GPU (e.g., 1024)
-  // ideally: number of voxels even divisible by this more than once
-  private static final int mGroupSize = 128;
-
-  // number of additional optimization trials with random restarts
-  private int mNumberOfRestarts = 4;
-  // stop each optimization run after this many function evaluations
-  private int mMaxNumberOfEvaluations = 200;
-  // voxel scale in z direction (relative to scale 1 for both x and y)
-  private float mScaleZ = 4;
-
-  private Matrix4f mZeroTransformMatrix = AffineMatrix.identity();
 
   private OnlineSmoothingFilter<double[]> mSmoother =
                                                     new SimpleExponentialSmoothing(6,
                                                                                    0.1);
 
-  // initial transformation (transX, transY, transZ, rotX, rotY, rotZ)
-  // rotation angles in degrees around center of volume
-  private double[] mInitTransform = new double[]
-  { 0, 0, 0, 0, 0, 0 };
-
-  private double mTranslationSearchRadius = 20;
-  private double mRotationSearchRadius = 10;
-
-  ///////////////////////////////////////////////////////////////////////////
-
   private CopyOnWriteArrayList<RegistrationListener> mListenerList =
                                                                    new CopyOnWriteArrayList<>();
 
-  private final RandomDataGenerator mRNG = new RandomDataGenerator();
-  private boolean mWaitToFinish = true;
   private String[] mInputImagesSlotKeys;
   private String mTransformedImageSlotKey;
+
+  private RegistrationParameters mRegistrationParameters =
+                                                         new RegistrationParameters();
   private Registration mRegistration;
 
   /**
@@ -101,13 +69,23 @@ public class RegistrationTask extends TaskBase implements
       pImageOriginalReferenceSlotKey,
       pImageOriginalToRegisterSlotKey };
     mTransformedImageSlotKey = pImageOriginalToRegisterTransformedKey;
+
+  }
+
+  /**
+   * Returns the registration parameters
+   * 
+   * @return registration parameters
+   */
+  public RegistrationParameters getParameters()
+  {
+    return mRegistrationParameters;
   }
 
   @Override
   public boolean enqueue(FastFusionEngineInterface pFastFusionEngine,
                          boolean pWaitToFinish)
   {
-    setWaitToFinish(pWaitToFinish);
 
     ClearCLImage lImageA, lImageB, lImageC, lImageD;
     lImageA = pFastFusionEngine.getImage(mInputImagesSlotKeys[0]);
@@ -126,22 +104,30 @@ public class RegistrationTask extends TaskBase implements
                                         lImageD);
 
     if (mRegistration == null)
-      mRegistration = new Registration(this, lImageA, lImageB);
+      mRegistration = new Registration(mRegistrationParameters,
+                                       lImageA,
+                                       lImageB);
     mRegistration.setImages(lImageA, lImageB);
 
-    System.out.println(mRegistration);
+    mRegistration.getParameters().setWaitToFinish(pWaitToFinish);
 
-    double[] lBestTransform = getInitialTransformation();
+    double[] lBestTransform =
+                            mRegistration.getParameters()
+                                         .getInitialTransformation();
     try
     {
       // find best registration
       lBestTransform = mRegistration.register();
+
+
 
       mRegistration.setImages(lImageC, lImageD);
       double lBestScoreOriginalImages =
                                       mRegistration.computeScore(lBestTransform);
       System.out.printf("score = %.6f for best transformation on original images\n",
                         lBestScoreOriginalImages);
+
+      notifyListenersOfScore(lBestScoreOriginalImages);
 
       // notify listeners
       notifyListenersOfNewComputedTheta(lBestTransform);
@@ -150,7 +136,7 @@ public class RegistrationTask extends TaskBase implements
       lBestTransform = mSmoother.update(lBestTransform);
 
       // use smoothed parameters as initial ones for next time
-      setInitialTransformation(lBestTransform);
+      mRegistrationParameters.setInitialTransformation(lBestTransform);
 
       lBestScoreOriginalImages =
                                mRegistration.computeScore(lBestTransform);
@@ -181,147 +167,10 @@ public class RegistrationTask extends TaskBase implements
     return true;
   }
 
-  /*
-   * Interface implementations for fastfuse.registration.RegistrationParameter
-   */
-
-  public void setMaxNumberOfEvaluations(int pMaxNumberOfEvaluations)
+  private void notifyListenersOfScore(double pScore)
   {
-    assert pMaxNumberOfEvaluations > 0;
-    mMaxNumberOfEvaluations = pMaxNumberOfEvaluations;
-  }
-
-  @Override
-  public int getMaxNumberOfEvaluations()
-  {
-    return mMaxNumberOfEvaluations;
-  }
-
-  @Override
-  public float getScaleZ()
-  {
-    return mScaleZ;
-  }
-
-  public void setScaleZ(float pScaleZ)
-  {
-    assert pScaleZ > 0;
-    mScaleZ = pScaleZ;
-  }
-
-  @Override
-  public double[] getUpperBounds()
-  {
-    return new double[]
-    { +mTranslationSearchRadius,
-      +mTranslationSearchRadius,
-      +mTranslationSearchRadius,
-      +mRotationSearchRadius,
-      +mRotationSearchRadius,
-      +mRotationSearchRadius };
-  }
-
-  @Override
-  public double[] getLowerBounds()
-  {
-    return new double[]
-    { -mTranslationSearchRadius,
-      -mTranslationSearchRadius,
-      -mTranslationSearchRadius,
-      -mRotationSearchRadius,
-      -mRotationSearchRadius,
-      -mRotationSearchRadius };
-  }
-
-  public void setTranslationSearchRadius(double pTranslationSearchRadius)
-  {
-    mTranslationSearchRadius = pTranslationSearchRadius;
-  }
-
-  public void setRotationSearchRadius(double pRotationSearchRadius)
-  {
-    mRotationSearchRadius = pRotationSearchRadius;
-  }
-
-  @Override
-  public Matrix4f getZeroTransformMatrix()
-  {
-    return mZeroTransformMatrix;
-  }
-
-  public void setZeroTransformMatrix(Matrix4f pZeroTransformMatrix)
-  {
-    mZeroTransformMatrix = new Matrix4f(pZeroTransformMatrix);
-  }
-
-  @Override
-  public double[] getInitialTransformation()
-  {
-    return mInitTransform;
-  }
-
-  public void setInitialTransformation(double... theta)
-  {
-    assert theta.length == 6;
-    mInitTransform = theta;
-  }
-
-  @Override
-  public Class<?> getClassForKernelBasePath()
-  {
-    return this.getClass();
-  }
-
-  @Override
-  public String getKernelSourceFile()
-  {
-    return "./kernels/registration.cl";
-  }
-
-  @Override
-  public int getNumberOfRestarts()
-  {
-    return mNumberOfRestarts;
-  }
-
-  public void setNumberOfRestarts(int pRestarts)
-  {
-    assert pRestarts >= 0 && pRestarts < 50;
-    mNumberOfRestarts = pRestarts;
-  }
-
-  @Override
-  public int getOpenCLGroupSize()
-  {
-    return mGroupSize;
-  }
-
-  @Override
-  public double[] perturbTransformation(double... theta)
-  {
-    assert theta.length == 6;
-    double[] lPerturbedTheta = new double[theta.length];
-    double[] lb = getLowerBounds(), ub = getUpperBounds();
-    for (int i = 0; i < theta.length; i++)
-    {
-      double c = i < 3 ? mTranslationSearchRadius
-                       : mRotationSearchRadius;
-      lPerturbedTheta[i] = theta[i] + mRNG.nextUniform(-c, c);
-      lPerturbedTheta[i] = Math.max(lb[i], lPerturbedTheta[i]);
-      lPerturbedTheta[i] = Math.min(ub[i], lPerturbedTheta[i]);
-    }
-    return lPerturbedTheta;
-  }
-
-  @Override
-  public boolean getWaitToFinish()
-  {
-    return mWaitToFinish;
-  }
-
-  public void setWaitToFinish(boolean pWaitToFinish)
-  {
-    mWaitToFinish = pWaitToFinish;
+    for (RegistrationListener lRegistrationListener : mListenerList)
+      lRegistrationListener.notifyListenersOfScore(pScore);
   }
 
   private void notifyListenersOfNewComputedTheta(double... theta)

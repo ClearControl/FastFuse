@@ -1,4 +1,4 @@
-package fastfuse.registration;
+package fastfuse.registration.smoothing;
 
 public interface OnlineSmoothingFilter<T>
 {

@@ -12,16 +12,6 @@ import java.util.stream.LongStream;
 
 import javax.vecmath.Matrix4f;
 
-import clearcl.ClearCLBuffer;
-import clearcl.ClearCLContext;
-import clearcl.ClearCLImage;
-import clearcl.ClearCLKernel;
-import clearcl.ClearCLProgram;
-import clearcl.enums.ImageChannelDataType;
-import clearcl.util.MatrixUtils;
-import coremem.enums.NativeTypeEnum;
-import fastfuse.FastFusionMemoryPool;
-
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.apache.commons.math3.exception.TooManyEvaluationsException;
@@ -32,6 +22,17 @@ import org.apache.commons.math3.optim.SimpleBounds;
 import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
 import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
+import org.apache.commons.math3.random.RandomDataGenerator;
+
+import clearcl.ClearCLBuffer;
+import clearcl.ClearCLContext;
+import clearcl.ClearCLImage;
+import clearcl.ClearCLKernel;
+import clearcl.ClearCLProgram;
+import clearcl.enums.ImageChannelDataType;
+import clearcl.util.MatrixUtils;
+import coremem.enums.NativeTypeEnum;
+import fastfuse.FastFusionMemoryPool;
 
 /**
  * Stack registration
@@ -50,9 +51,11 @@ public class Registration
                                                                "affine_transform",
                                                                "reduce_ncc_affine");
 
+  private final RandomDataGenerator mRNG = new RandomDataGenerator();
+
   private final ClearCLContext mContext;
   private final Map<String, ClearCLKernel> mKernels;
-  private final RegistrationParameter mParams;
+  private final RegistrationParameters mParameters;
 
   private long[] mGlobalSize, mLocalSize;
   private final int mGroupSize;
@@ -68,22 +71,43 @@ public class Registration
   /**
    * Instantiates a stack registration class given two images
    * 
-   * @param pParams
+   * @param pRegistrationParameters
+   *          registration parameters
    * @param pImageA
+   *          image A
    * @param pImageB
+   *          image B
    */
-  public Registration(RegistrationParameter pParams,
+  public Registration(RegistrationParameters pRegistrationParameters,
                       ClearCLImage pImageA,
                       ClearCLImage pImageB)
   {
-    mParams = pParams;
+    mParameters = pRegistrationParameters;
     mContext = pImageA.getContext();
-    mGroupSize = mParams.getOpenCLGroupSize();
+    mGroupSize = mParameters.getOpenCLGroupSize();
     mKernels = getKernels(mGroupSize);
     setSizeAndPrepare(pImageA.getDimensions());
     setImages(pImageA, pImageB);
   }
 
+  /**
+   * Returns the registration parameters
+   * 
+   * @return registration parameters
+   */
+  public RegistrationParameters getParameters()
+  {
+    return mParameters;
+  }
+
+  /**
+   * Sets the two images to register
+   * 
+   * @param pImageA
+   *          image A
+   * @param pImageB
+   *          image B
+   */
   public void setImages(ClearCLImage pImageA, ClearCLImage pImageB)
   {
     assert pImageA.getChannelDataType() == ImageChannelDataType.Float;
@@ -109,7 +133,7 @@ public class Registration
                       * mGlobalSize[2]);
     mBufferSizes.push(mBufferSizes.peek() / mGroupSize);
     while (mBufferSizes.peek() % mGroupSize == 0
-           && mBufferSizes.peek() > mParams.getOpenCLReductionThreshold())
+           && mBufferSizes.peek() > mParameters.getOpenCLReductionThreshold())
       mBufferSizes.push(mBufferSizes.peek() / mGroupSize);
 
     // close existing buffers if necessary
@@ -135,7 +159,7 @@ public class Registration
     // create fixed matrices for transformations
     long cx = mGlobalSize[0] / 2, cy = mGlobalSize[1] / 2,
         cz = mGlobalSize[2] / 2;
-    float sz = mParams.getScaleZ();
+    float sz = mParameters.getScaleZ();
     mMatCenterAndScale =
                        AffineMatrix.multiply(AffineMatrix.scaling(1,
                                                                   1,
@@ -247,16 +271,17 @@ public class Registration
     // optimizer.setMaxEval(mParams.getMaxNumberOfEvaluations());
 
     BOBYQAOptimizer lOptimizer = new BOBYQAOptimizer(2 * 6 + 1);
-    SimpleBounds lBounds = new SimpleBounds(mParams.getLowerBounds(),
-                                            mParams.getUpperBounds());
+    SimpleBounds lBounds =
+                         new SimpleBounds(mParameters.getLowerBounds(),
+                                          mParameters.getUpperBounds());
 
     // current best solution is initialization
-    double[] initTheta = mParams.getInitialTransformation();
+    double[] initTheta = mParameters.getInitialTransformation();
     double[] bestTheta = initTheta;
     double bestJ = J.value(bestTheta);
 
     // find better registration
-    for (int i = 0; i < 1 + mParams.getNumberOfRestarts(); i++)
+    for (int i = 0; i < 1 + mParameters.getNumberOfRestarts(); i++)
     {
       // start for optimization
       double[] theta = 0 == i ? initTheta
@@ -274,7 +299,7 @@ public class Registration
       /////////////////
       try
       {
-        lOptimizer.optimize(new MaxEval(mParams.getMaxNumberOfEvaluations()),
+        lOptimizer.optimize(new MaxEval(mParameters.getMaxNumberOfEvaluations()),
                             new ObjectiveFunction(J),
                             GoalType.MINIMIZE,
                             lBounds,
@@ -325,7 +350,10 @@ public class Registration
     for (int i = 0; i < pNumberOfSamples; i++)
     {
       // System.out.println(i);
-      double[] lTheta = mParams.perturbTransformation(pInitTheta);
+      double[] lTheta =
+                      perturbTransformation(getParameters().getTranslationSearchRadius(),
+                                            getParameters().getRotationSearchRadius(),
+                                            pInitTheta);
       double j = J.value(lTheta);
       if (j < lBestJ)
       {
@@ -338,6 +366,46 @@ public class Registration
     return lBestTheta;
   }
 
+  /**
+   * Perturbes a given transformation theta by a given amounts for the
+   * translation and rotation components
+   * 
+   * @param pTranslationEpsilon
+   *          translation +/- perturbation
+   * @param pRotationEpsilon
+   *          rotation +/- perturbation
+   * @param theta
+   *          transformation to perturb
+   * @return perturbed transformation
+   */
+  public double[] perturbTransformation(double pTranslationEpsilon,
+                                        double pRotationEpsilon,
+                                        double[] theta)
+  {
+    assert theta.length == 6;
+    double[] lPerturbedTheta = new double[theta.length];
+    double[] lb = mParameters.getLowerBounds(),
+        ub = mParameters.getUpperBounds();
+    for (int i = 0; i < theta.length; i++)
+    {
+      double c = i < 3 ? pTranslationEpsilon : pRotationEpsilon;
+      lPerturbedTheta[i] = theta[i] + mRNG.nextUniform(-c, c);
+      lPerturbedTheta[i] = Math.max(lb[i], lPerturbedTheta[i]);
+      lPerturbedTheta[i] = Math.min(ub[i], lPerturbedTheta[i]);
+    }
+    return lPerturbedTheta;
+  }
+
+  /**
+   * Transforms a source image to a target image using the given transform
+   * 
+   * @param pImageTarget
+   *          target image
+   * @param pImageSource
+   *          source image
+   * @param theta
+   *          trasnform
+   */
   public void transform(ClearCLImage pImageTarget,
                         ClearCLImage pImageSource,
                         double... theta)
@@ -349,7 +417,7 @@ public class Registration
                          pImageSource,
                          getTransformMatrixBuffer(floatArray(theta)));
     lKernel.setGlobalSizes(mGlobalSize);
-    runKernel(lKernel, mParams.getWaitToFinish());
+    runKernel(lKernel, mParameters.getWaitToFinish());
   }
 
   private ClearCLBuffer getTransformMatrixBuffer(float... theta)
@@ -363,7 +431,7 @@ public class Registration
                                                 theta[5]);
     Matrix4f lMatFinal =
                        AffineMatrix.multiply(mMatCenterAndScaleInverse,
-                                             mParams.getZeroTransformMatrix(),
+                                             mParameters.getZeroTransformMatrix(),
                                              lMatTranslate,
                                              lMatRotate,
                                              mMatCenterAndScale);
@@ -408,7 +476,7 @@ public class Registration
         lSrcBuffers = i == s ? pBuffers : mBuffers[i - 1];
         lKernel.setArguments(mBuffers[i][0], lSrcBuffers[0]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
-        runKernel(lKernel, mParams.getWaitToFinish());
+        runKernel(lKernel, mParameters.getWaitToFinish());
       }
       return reduceMeanOnHost(mBuffers[lNumReductions - 1][0]);
 
@@ -423,7 +491,7 @@ public class Registration
                              mBuffers[i][1],
                              lSrcBuffers[1]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
-        runKernel(lKernel, mParams.getWaitToFinish());
+        runKernel(lKernel, mParameters.getWaitToFinish());
       }
       return reduceMeanOnHost(mBuffers[lNumReductions - 1][0],
                               mBuffers[lNumReductions - 1][1]);
@@ -441,7 +509,7 @@ public class Registration
                              mBuffers[i][2],
                              lSrcBuffers[2]);
         lKernel.setGlobalSizes(mBufferSizes.get(i));
-        runKernel(lKernel, mParams.getWaitToFinish());
+        runKernel(lKernel, mParameters.getWaitToFinish());
       }
       return reduceMeanOnHost(mBuffers[lNumReductions - 1][0],
                               mBuffers[lNumReductions - 1][1],
@@ -494,7 +562,7 @@ public class Registration
                          mImageB);
     lKernel.setGlobalSizes(mGlobalSize);
     lKernel.setLocalSizes(mLocalSize);
-    runKernel(lKernel, mParams.getWaitToFinish());
+    runKernel(lKernel, mParameters.getWaitToFinish());
     return reduceMean(mBuffers[0][0], mBuffers[0][1]);
   }
 
@@ -504,7 +572,7 @@ public class Registration
     lKernel.setArguments(mBuffers[0][0], pImage, pMean);
     lKernel.setGlobalSizes(mGlobalSize);
     lKernel.setLocalSizes(mLocalSize);
-    runKernel(lKernel, mParams.getWaitToFinish());
+    runKernel(lKernel, mParameters.getWaitToFinish());
     return reduceMean(mBuffers[0][0])[0];
   }
 
@@ -525,7 +593,7 @@ public class Registration
                          meanBapprox);
     lKernel.setGlobalSizes(mGlobalSize);
     lKernel.setLocalSizes(mLocalSize);
-    runKernel(lKernel, mParams.getWaitToFinish());
+    runKernel(lKernel, mParameters.getWaitToFinish());
     float[] reds = reduceMean(mBuffers[0][0],
                               mBuffers[0][1],
                               mBuffers[0][2]);
@@ -551,11 +619,9 @@ public class Registration
     HashMap<String, ClearCLKernel> lKernels = null;
     try
     {
-      Class<?> lClassForKernel = mParams.getClassForKernelBasePath();
-      String lKernelSourceFile = mParams.getKernelSourceFile();
       ClearCLProgram lProgram =
-                              mContext.createProgram(lClassForKernel,
-                                                     lKernelSourceFile);
+                              mContext.createProgram(this.getClass(),
+                                                     "./kernels/registration.cl");
       lProgram.addDefine("MAX_GROUP_SIZE", pGroupSize);
       lProgram.addBuildOptionAllMathOpt();
       lProgram.buildAndLog();

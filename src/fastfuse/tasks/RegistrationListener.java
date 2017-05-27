@@ -28,4 +28,13 @@ public interface RegistrationListener
    */
   void newUsedTheta(double[] pTheta);
 
+  /**
+   * Called to notify of a new registration score (typically normalized cross
+   * correlation)
+   * 
+   * @param pScore
+   *          new registration score
+   */
+  void notifyListenersOfScore(double pScore);
+
 }

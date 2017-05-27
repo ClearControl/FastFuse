@@ -7,10 +7,10 @@ import java.util.UUID;
 
 import javax.vecmath.Matrix4f;
 
+import org.apache.commons.lang3.ArrayUtils;
+
 import clearcl.enums.ImageChannelDataType;
 import fastfuse.tasks.DownsampleXYbyHalfTask.Type;
-
-import org.apache.commons.lang3.ArrayUtils;
 
 public class CompositeTasks
 {
@@ -136,7 +136,8 @@ public class CompositeTasks
                                                             pImageReferenceKey,
                                                             pImageToRegisterKey,
                                                             pImageTransformedKey);
-    lRegistrationTask.setZeroTransformMatrix(pZeroTransformMatrix);
+    lRegistrationTask.getParameters()
+                     .setZeroTransformMatrix(pZeroTransformMatrix);
 
     return Arrays.asList(new GaussianBlurTask(pImageReferenceKey,
                                               lImageReferenceBlurredKey,
