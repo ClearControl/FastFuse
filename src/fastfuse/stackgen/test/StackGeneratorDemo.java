@@ -27,11 +27,11 @@ import fastfuse.tasks.DownsampleXYbyHalfTask.Type;
  *
  * @author royer
  */
-public class StackGeneratorTests
+public class StackGeneratorDemo
 {
 
   /**
-   * Test
+   * Demo stack generation with Simbryo
    * 
    * @throws Exception
    *           NA
@@ -85,13 +85,13 @@ public class StackGeneratorTests
   }
 
   /**
-   * Test Dummy Average Fusion
+   * Demo Dummy Average Fusion
    * 
    * @throws Exception
    *           NA
    */
   @Test
-  public void testDummyAverageFusion() throws Exception
+  public void demoDummyAverageFusion() throws Exception
   {
     // XXX: disable for now
     if (true)
@@ -162,13 +162,13 @@ public class StackGeneratorTests
   }
 
   /**
-   * Test XWing Fusion
+   * Test XWing Fusion demo
    * 
    * @throws Exception
    *           NA
    */
   @Test
-  public void testXWingFusion() throws Exception
+  public void demoXWingFusion() throws Exception
   {
 
     boolean mUseCache = true;
@@ -293,7 +293,7 @@ public class StackGeneratorTests
       lStackGenerator.setLightSheetHeight(1.2f);
       lStackGenerator.setLightSheetIntensity(10f);
 
-      for (int t = 0; t < 100; t++)
+      for (int t = 0; t < 5; t++)
       {
         lFastFusionEngine.reset(false);
         for (int c = 0; c < 2; c++)

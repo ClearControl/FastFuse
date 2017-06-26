@@ -9,12 +9,10 @@ import clearcl.ClearCLDevice;
 import clearcl.backend.ClearCLBackendInterface;
 import clearcl.backend.ClearCLBackends;
 import clearcl.enums.ImageChannelDataType;
-import clearcl.viewer.ClearCLImageViewer;
 import coremem.offheap.OffHeapMemory;
 import fastfuse.FastFusionEngine;
+import fastfuse.FastFusionMemoryPool;
 import fastfuse.tasks.AverageTask;
-
-import org.junit.Test;
 
 /**
  * fast fusion tests
@@ -30,7 +28,7 @@ public class FastFusionTests
    * @throws Exception
    *           NA
    */
-  @Test
+  // @Test
   public void test() throws Exception
   {
 
@@ -46,6 +44,8 @@ public class FastFusionTests
                                         lClearCL.getFastestGPUDeviceForImages();
         ClearCLContext lContext = lFastestGPUDevice.createContext())
     {
+
+      FastFusionMemoryPool.getInstance(lContext, 10000000);
 
       FastFusionEngine lStackFusion = new FastFusionEngine(lContext);
 
@@ -109,16 +109,16 @@ public class FastFusionTests
       ClearCLImageViewer lViewB =
                                 ClearCLImageViewer.view(lStackFusion.getImage("b"));/**/
 
-      ClearCLImageViewer lView =
-                               ClearCLImageViewer.view(lStackFusion.getImage("c"));
+      /*ClearCLImageViewer lView =
+                               ClearCLImageViewer.view(lStackFusion.getImage("c"));/**/
 
       assertTrue(lStackFusion.executeAllTasks() == 0);
 
       lStackFusion.reset(false);
       assertFalse(lStackFusion.isImageAvailable("c"));
 
-      while (lView.isShowing())
-        Thread.sleep(10);
+      /*while (lView.isShowing())
+        Thread.sleep(10);/**/
 
     }
 
