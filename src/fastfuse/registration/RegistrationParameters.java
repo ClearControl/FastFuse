@@ -35,7 +35,6 @@ public class RegistrationParameters
 
   private boolean mWaitToFinish = true;
 
-
   public void setMaxNumberOfEvaluations(int pMaxNumberOfEvaluations)
   {
     assert pMaxNumberOfEvaluations > 0;
@@ -121,7 +120,6 @@ public class RegistrationParameters
     mInitTransform = theta;
   }
 
-
   public int getNumberOfRestarts()
   {
     return mNumberOfRestarts;
@@ -152,7 +150,5 @@ public class RegistrationParameters
   {
     mWaitToFinish = pWaitToFinish;
   }
-
-
 
 }

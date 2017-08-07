@@ -2,8 +2,6 @@ package fastfuse.stackgen.test;
 
 import javax.vecmath.Matrix4f;
 
-import org.junit.Test;
-
 import clearcl.ClearCL;
 import clearcl.ClearCLContext;
 import clearcl.ClearCLDevice;
@@ -21,6 +19,8 @@ import fastfuse.tasks.AverageTask;
 import fastfuse.tasks.CompositeTasks;
 import fastfuse.tasks.DownsampleXYbyHalfTask;
 import fastfuse.tasks.DownsampleXYbyHalfTask.Type;
+
+import org.junit.Test;
 
 /**
  * Stack generator tests

@@ -12,6 +12,16 @@ import java.util.stream.LongStream;
 
 import javax.vecmath.Matrix4f;
 
+import clearcl.ClearCLBuffer;
+import clearcl.ClearCLContext;
+import clearcl.ClearCLImage;
+import clearcl.ClearCLKernel;
+import clearcl.ClearCLProgram;
+import clearcl.enums.ImageChannelDataType;
+import clearcl.util.MatrixUtils;
+import coremem.enums.NativeTypeEnum;
+import fastfuse.FastFusionMemoryPool;
+
 import org.apache.commons.lang3.reflect.FieldUtils;
 import org.apache.commons.math3.analysis.MultivariateFunction;
 import org.apache.commons.math3.exception.NumberIsTooLargeException;
@@ -25,16 +35,6 @@ import org.apache.commons.math3.optim.nonlinear.scalar.GoalType;
 import org.apache.commons.math3.optim.nonlinear.scalar.ObjectiveFunction;
 import org.apache.commons.math3.optim.nonlinear.scalar.noderiv.BOBYQAOptimizer;
 import org.apache.commons.math3.random.RandomDataGenerator;
-
-import clearcl.ClearCLBuffer;
-import clearcl.ClearCLContext;
-import clearcl.ClearCLImage;
-import clearcl.ClearCLKernel;
-import clearcl.ClearCLProgram;
-import clearcl.enums.ImageChannelDataType;
-import clearcl.util.MatrixUtils;
-import coremem.enums.NativeTypeEnum;
-import fastfuse.FastFusionMemoryPool;
 
 /**
  * Stack registration

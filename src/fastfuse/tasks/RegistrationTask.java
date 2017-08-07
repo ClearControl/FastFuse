@@ -3,14 +3,14 @@ package fastfuse.tasks;
 import java.util.Arrays;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.apache.commons.lang3.tuple.MutablePair;
-
 import clearcl.ClearCLImage;
 import clearcl.enums.ImageChannelDataType;
 import fastfuse.FastFusionEngineInterface;
 import fastfuse.registration.Registration;
 import fastfuse.registration.RegistrationParameters;
 import fastfuse.utils.smoothing.SimpleExponentialSmoothing;
+
+import org.apache.commons.lang3.tuple.MutablePair;
 
 /**
  * Stack registration. This task takes two images, and applies an affine
@@ -24,8 +24,8 @@ public class RegistrationTask extends TaskBase
 {
 
   private SimpleExponentialSmoothing mSmoother =
-                                                    new SimpleExponentialSmoothing(6,
-                                                                                   0.1);
+                                               new SimpleExponentialSmoothing(6,
+                                                                              0.1);
 
   private CopyOnWriteArrayList<RegistrationListener> mListenerList =
                                                                    new CopyOnWriteArrayList<>();
@@ -128,7 +128,6 @@ public class RegistrationTask extends TaskBase
     {
       // find best registration
       lBestTransform = mRegistration.register();
-
 
       mRegistration.setImages(lImageC, lImageD);
       double lBestScoreOriginalImages =
