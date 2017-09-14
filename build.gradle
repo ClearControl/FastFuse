@@ -113,7 +113,7 @@ dependencies
     compile ('net.clearvolume:clearcl:0.5.1')     {transitive= true; changing= true}
     
     // Symbrio:
-    compile ('net.clearcontrol:simbryo:0.7.1')    {transitive= true; changing= true}
+    compile ('net.clearcontrol:simbryo:0.7.2')    {transitive= true; changing= true}
     
         
     // JUnit:
