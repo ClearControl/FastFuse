@@ -107,13 +107,13 @@ dependencies
     compile ('javax.vecmath:vecmath:1.5.2')
 
     // CoreMem:
-    compile ('net.coremem:CoreMem:0.4.3')         {transitive= true; changing= true}
+    compile ('net.coremem:coremem:0.4.4')         {transitive= true; changing= true}
 
     // ClearCL:
-    compile ('net.clearvolume:clearcl:0.4.6')     {transitive= true; changing= true}
+    compile ('net.clearvolume:clearcl:0.5.1')     {transitive= true; changing= true}
     
     // Symbrio:
-    compile ('net.clearcontrol:Simbryo:0.6.1')    {transitive= true; changing= true}
+    compile ('net.clearcontrol:simbryo:0.7.1')    {transitive= true; changing= true}
     
         
     // JUnit:

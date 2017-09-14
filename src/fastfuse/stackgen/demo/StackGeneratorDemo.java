@@ -1,4 +1,4 @@
-package fastfuse.stackgen.test;
+package fastfuse.stackgen.demo;
 
 import javax.vecmath.Matrix4f;
 
