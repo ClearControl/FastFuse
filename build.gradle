@@ -130,6 +130,8 @@ repositories
 
     // ClearControl:
     maven { url  "http://dl.bintray.com/clearcontrol/ClearControl"  }
+    maven { url "http://dl.bintray.com/haesleinhuepf/snapshots" }
+
 
     // ClearVolume: 
     maven { url  "http://dl.bintray.com/clearvolume/ClearVolume"  }
