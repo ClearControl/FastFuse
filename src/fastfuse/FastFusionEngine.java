@@ -190,8 +190,10 @@ public class FastFusionEngine implements FastFusionEngineInterface
     MutablePair<Boolean, ClearCLImage> lMutablePair =
                                                     getImageSlotsMap().remove(pSlotKey);
     assert lMutablePair != null;
-    FastFusionMemoryPool.get().releaseImage(pSlotKey,
-                                            lMutablePair.getRight());
+    if (lMutablePair != null)
+    {
+      FastFusionMemoryPool.get().releaseImage(pSlotKey, lMutablePair.getRight());
+    }
   }
 
   @Override
@@ -239,14 +241,20 @@ public class FastFusionEngine implements FastFusionEngineInterface
       return pExecutedNumberOfTasks;
     Set<String> lAvailableImageKeys = getAvailableImagesSlotKeys();
     for (TaskInterface lTask : mFusionTasks)
+    {
       if (!mExecutedFusionTasks.contains(lTask))
+      {
         if (lTask.checkIfRequiredImagesAvailable(lAvailableImageKeys))
         {
           lTask.enqueue(this, true);
           mExecutedFusionTasks.add(lTask);
           return executeSeveralTasks(pExecutedNumberOfTasks + 1,
                                      pMaxNumberOfTasks);
+        } else {
+          System.out.println("Cannot execute " + lTask + " because not the right available images: " + lAvailableImageKeys );
         }
+      }
+    }
     return pExecutedNumberOfTasks;
   }
 
