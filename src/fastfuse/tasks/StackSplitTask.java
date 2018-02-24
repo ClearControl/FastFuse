@@ -7,6 +7,8 @@ import fastfuse.FastFusionException;
 import org.apache.commons.lang3.tuple.MutablePair;
 
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Map;
 
 /**
  * This Task allows to split a stack with slices (0,1,2,3,4,5,6,7)
@@ -23,6 +25,19 @@ public class StackSplitTask extends TaskBase implements TaskInterface
   private final String mInputImageSlotKey;
   private final String[] mDestImageSlotKeys;
   private boolean mDownsampleXYByHalf;
+
+  public static ArrayList<TaskInterface> splitStackAndReleaseInputs(
+      String pInputImageSlotKey,
+      String[] pDestImageSlotKeys,
+      boolean pDownsampleXYByHalf)
+  {
+    ArrayList<TaskInterface> lList = new ArrayList<TaskInterface>();
+
+    lList.add(new StackSplitTask(pInputImageSlotKey, pDestImageSlotKeys, pDownsampleXYByHalf));
+    lList.add(new MemoryReleaseTask(Arrays.asList(pDestImageSlotKeys), pInputImageSlotKey));
+
+    return lList;
+  }
 
   public StackSplitTask(String pInputImageSlotKey,
                         String[] pDestImageSlotKeys)
@@ -63,12 +78,25 @@ public class StackSplitTask extends TaskBase implements TaskInterface
 
     ClearCLKernel lKernel = null;
 
+    Map<String, Object> lDefines = TaskHelper.getOpenCLDefines(lInputImage,
+                                                               lInputImage);
+
     try
     {
-      if (!mDownsampleXYByHalf) {
-        lKernel = getKernel(lInputImage.getContext(), "convert_interleaved_to_stacks_" + mDestImageSlotKeys.length);
-      } else {
-        lKernel = getKernel(lInputImage.getContext(), "convert_interleaved_to_stacks_" + mDestImageSlotKeys.length + "_and_downsample_xy_by_half_nearest");
+      if (!mDownsampleXYByHalf)
+      {
+        lKernel =
+            getKernel(lInputImage.getContext(),
+                      "convert_interleaved_to_stacks_"
+                      + mDestImageSlotKeys.length, lDefines);
+      }
+      else
+      {
+        lKernel =
+            getKernel(lInputImage.getContext(),
+                      "convert_interleaved_to_stacks_"
+                      + mDestImageSlotKeys.length
+                      + "_and_downsample_xy_by_half_nearest", lDefines);
       }
     }
     catch (Exception e)
@@ -79,6 +107,16 @@ public class StackSplitTask extends TaskBase implements TaskInterface
 
     lKernel.setArgument("src", lInputImage);
 
+    long[] lSrcDims = lInputImage.getDimensions();
+    assert lSrcDims.length == 3;
+    assert lSrcDims[0] % 2 == 0 && lSrcDims[1] % 2 == 0;
+    long[] lDstDims = new long[]
+        { lSrcDims[0] , lSrcDims[1] , lSrcDims[2] / 4};
+    if (mDownsampleXYByHalf) {
+      lSrcDims[0] = lSrcDims[0] / 2;
+      lSrcDims[1] = lSrcDims[1] / 2;
+    }
+
     int lDestCount = 0;
     for (String lDestImageSlotKey : mDestImageSlotKeys)
     {
@@ -86,7 +124,7 @@ public class StackSplitTask extends TaskBase implements TaskInterface
           lDestImageAndFlag =
           pFastFusionEngine.ensureImageAllocated(lDestImageSlotKey,
                                                  lInputImage.getChannelDataType(),
-                                                 lInputImage.getDimensions());
+                                                 lDstDims);
       lResultImagesAndFlags.add(lDestImageAndFlag);
 
       ClearCLImage lDestImage = lDestImageAndFlag.getValue();
@@ -95,13 +133,10 @@ public class StackSplitTask extends TaskBase implements TaskInterface
       lDestCount++;
     }
 
-
     // System.out.println("running kernel");
     runKernel(lKernel, pWaitToFinish);
 
-    for (MutablePair<Boolean, ClearCLImage>
-         lDestImageAndFlag : lResultImagesAndFlags
-        )
+    for (MutablePair<Boolean, ClearCLImage> lDestImageAndFlag : lResultImagesAndFlags)
     {
       lDestImageAndFlag.setLeft(true);
     }
