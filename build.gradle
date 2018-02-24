@@ -70,7 +70,7 @@ def getVersionName = {
 sourceCompatibility = 1.8
 
 group = 'net.clearcontrol'
-version = getVersionName()
+version = '0.6.1-RH' //getVersionName()
 
 
 test 
@@ -111,7 +111,7 @@ dependencies
     // available via simbryo...
     
     // Symbrio:
-    compile ('net.clearcontrol:simbryo:0.7.2')    {transitive= true; changing= true}
+    compile ('net.clearcontrol:simbryo:0.8.1-RH')    {transitive= true; changing= true}
     
         
     // JUnit:
@@ -123,12 +123,15 @@ dependencies
 repositories 
 {
     // main repos:
+    mavenLocal()
     mavenCentral()
     maven { url "http://oss.sonatype.org/content/groups/public"} 
     maven { url "http://mvnrepository.com/artifact" }
 
     // ClearControl:
     maven { url  "http://dl.bintray.com/clearcontrol/ClearControl"  }
+    maven { url "http://dl.bintray.com/haesleinhuepf/snapshots" }
+
 
     // ClearVolume: 
     maven { url  "http://dl.bintray.com/clearvolume/ClearVolume"  }
