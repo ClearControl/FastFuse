@@ -113,8 +113,8 @@ public class StackSplitTask extends TaskBase implements TaskInterface
     long[] lDstDims = new long[]
         { lSrcDims[0] , lSrcDims[1] , lSrcDims[2] / 4};
     if (mDownsampleXYByHalf) {
-      lSrcDims[0] = lSrcDims[0] / 2;
-      lSrcDims[1] = lSrcDims[1] / 2;
+      lDstDims[0] = lDstDims[0] / 2;
+      lDstDims[1] = lDstDims[1] / 2;
     }
 
     int lDestCount = 0;
