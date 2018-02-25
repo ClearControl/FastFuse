@@ -251,7 +251,7 @@ public class FastFusionEngine implements FastFusionEngineInterface
           return executeSeveralTasks(pExecutedNumberOfTasks + 1,
                                      pMaxNumberOfTasks);
         } else {
-          System.out.println("Cannot execute " + lTask + " because not the right available images: " + lAvailableImageKeys );
+          //System.out.println("Cannot execute " + lTask + " because not the right available images: " + lAvailableImageKeys );
         }
       }
     }
