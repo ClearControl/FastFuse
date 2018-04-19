@@ -83,7 +83,22 @@ public class FastFusionEngine implements FastFusionEngineInterface
   @Override
   public void addTask(TaskInterface pTask)
   {
-    mFusionTasks.add(pTask);
+    addTask(pTask, false);
+  }
+
+  /**
+   *
+   * @param pTask task to add to the list
+   * @param pPriority this flag allows adding an entry at the beginning of the list
+   */
+  public void addTask(TaskInterface pTask, boolean pPriority)
+  {
+    if (pPriority) {
+     mFusionTasks.add(0, pTask);
+    } else
+    {
+      mFusionTasks.add(pTask);
+    }
   }
 
   @Override
