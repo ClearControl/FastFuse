@@ -105,10 +105,6 @@ dependencies
     
     // Vecmath:
     compile ('javax.vecmath:vecmath:1.5.2')
-
-   
-    // ClearCL:
-    // available via simbryo...
     
     // Symbrio:
     compile ('net.clearcontrol:simbryo:0.8.1-RH')    {transitive= true; changing= true}
