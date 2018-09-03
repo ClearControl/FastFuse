@@ -88,14 +88,18 @@ public class FastFusionEngine implements FastFusionEngineInterface
 
   /**
    *
-   * @param pTask task to add to the list
-   * @param pPriority this flag allows adding an entry at the beginning of the list
+   * @param pTask
+   *          task to add to the list
+   * @param pPriority
+   *          this flag allows adding an entry at the beginning of the list
    */
   public void addTask(TaskInterface pTask, boolean pPriority)
   {
-    if (pPriority) {
-     mFusionTasks.add(0, pTask);
-    } else
+    if (pPriority)
+    {
+      mFusionTasks.add(0, pTask);
+    }
+    else
     {
       mFusionTasks.add(pTask);
     }
@@ -207,7 +211,9 @@ public class FastFusionEngine implements FastFusionEngineInterface
     assert lMutablePair != null;
     if (lMutablePair != null)
     {
-      FastFusionMemoryPool.get().releaseImage(pSlotKey, lMutablePair.getRight());
+      FastFusionMemoryPool.get()
+                          .releaseImage(pSlotKey,
+                                        lMutablePair.getRight());
     }
   }
 
@@ -265,8 +271,11 @@ public class FastFusionEngine implements FastFusionEngineInterface
           mExecutedFusionTasks.add(lTask);
           return executeSeveralTasks(pExecutedNumberOfTasks + 1,
                                      pMaxNumberOfTasks);
-        } else {
-          //System.out.println("Cannot execute " + lTask + " because not the right available images: " + lAvailableImageKeys );
+        }
+        else
+        {
+          // System.out.println("Cannot execute " + lTask + " because not the
+          // right available images: " + lAvailableImageKeys );
         }
       }
     }

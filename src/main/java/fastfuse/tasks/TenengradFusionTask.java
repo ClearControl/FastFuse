@@ -98,7 +98,7 @@ public class TenengradFusionTask extends FusionTaskBase
    *          image A slot key
    * @param pImageBSlotKey
    *          image B slot key
-   * @param pDestImageKey
+   * @param pDestImageSlotKey
    *          destination image key
    * @param pDestinationImageDataType
    *          destination image channel data type

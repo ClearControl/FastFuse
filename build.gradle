@@ -1,77 +1,44 @@
-buildscript {
-    repositories {
-        jcenter()
-        mavenLocal()
-        mavenCentral()
-    }
-    dependencies {
-        classpath group: 'de.dynamicfiles.projects.gradle.plugins', name: 'javafx-gradle-plugin', version: '8.8.2'
-    }
-}
 
 plugins {
-  id "com.jfrog.bintray" version "1.2"
-  id "us.kirchmeier.capsule" version "1.0.2"
-  id "com.diffplug.gradle.spotless" version "3.1.0"
+    id "com.jfrog.bintray" version "1.2"
+    id "com.diffplug.gradle.spotless" version "3.1.0"
+    id "de.undercouch.download" version "3.4.3"
 }
-
 
 apply plugin: 'java'
 apply plugin: 'eclipse'
 apply plugin: 'idea'
 apply plugin: 'maven'
 apply plugin: 'maven-publish'
-apply plugin: "com.jfrog.bintray"
-apply plugin: 'javafx-gradle-plugin'
-apply plugin: 'com.diffplug.gradle.spotless'
-//apply plugin: 'findbugs'
 
 
+// Master gradle file:
+apply from: 'https://github.com/ClearControl/master/blob/master/master.gradle?raw=true'
 
+//***********************************************************************************
+// JAVA CODE BUILDING
 
-sourceSets {
+sourceSets
+{
     main
     {
         java
-        { srcDir 'src' }
+        { srcDir 'src/main/java' }
         resources
-        { srcDir 'src' }
+        { srcDir 'src/main/java' }
     }
     test
     {
         java
-        { srcDir 'src' }
+        { srcDir 'src/test/java' }
         resources
-        { srcDir 'src' }
-    }
-}
-
-/*
- * Gets the version name from the latest Git tag
- */
-def getVersionName = {
-    ->
-    try
-    {
-	    def stdout = new ByteArrayOutputStream()
-	    exec {
-	        commandLine 'git', 'describe', '--tags'
-	        standardOutput = stdout
-	    }
-	    return stdout.toString().trim()
-    }
-    catch(Throwable e)
-    {
-    	println e
+        { srcDir 'src/test/java' }
     }
 }
 
 
 sourceCompatibility = 1.8
-
-group = 'net.clearcontrol'
-version = '0.6.4' //getVersionName()
-
+targetCompatibility = 1.8
 
 test 
 {
@@ -96,18 +63,13 @@ dependencies
     // commons lang:
     compile 'org.apache.commons:commons-lang3:3.4'
     compile 'org.apache.commons:commons-math3:3.6.1'
-    
-    // SCIFIO:
-    //compile ('io.scif:scifio:0.30.0')           {transitive= true; changing= true}
-    
-    // BioFormats:
-    //compile ('ome:bioformats_package:5.3.0')
+
     
     // Vecmath:
     compile ('javax.vecmath:vecmath:1.5.2')
     
     // Symbrio:
-    compile ('net.clearcontrol:simbryo:0.8.1-RH')    {transitive= true; changing= true}
+    compile ('net.clearcontrol:simbryo:'+depver('simbryo'))    {transitive= true; changing= true}
     
         
     // JUnit:
@@ -118,16 +80,18 @@ dependencies
 
 repositories 
 {
-    // main repos:
+    // Main repos:
     mavenLocal()
     mavenCentral()
+    jcenter()
+
+
     maven { url "http://oss.sonatype.org/content/groups/public"} 
     maven { url "http://mvnrepository.com/artifact" }
 
     // ClearControl:
     maven { url  "http://dl.bintray.com/clearcontrol/ClearControl"  }
     maven { url "http://dl.bintray.com/haesleinhuepf/snapshots" }
-
 
     // ClearVolume: 
     maven { url  "http://dl.bintray.com/clearvolume/ClearVolume"  }
@@ -162,18 +126,18 @@ if (JavaVersion.current().isJava8Compatible()) {
   }
 
 
-//***********************************************************************************
 
+//***********************************************************************************
 // PUBLISHING
 
-
-
+group   = project.ext.groupname
+version = project.ext.versionsMap[project.name]
 
 artifacts
-{
-    archives sourcesJar
-    archives javadocJar
-}
+        {
+            archives sourcesJar
+            archives javadocJar
+        }
 
 publishing {
     publications {
@@ -183,38 +147,4 @@ publishing {
         }
     }
 }
-
-apply from: 'gradle/bintrayUpload.gradle'
-
-
-//***********************************************************************************
-// GIT HOOKS:
-
-apply from: 'gradle/install-git-hooks.gradle'
-
-//***********************************************************************************
-// SPOTLESS:
-
-spotless {
-    java {
-        //licenseHeader '/* Licensed under Apache-2.0 */' // License header
- 
-        importOrder(['java', 'javax', 'com', 'org'])
-
-        removeUnusedImports() // removes any unused imports
-
-        eclipseFormatFile 'codeformat.eclipse.xml'  
-    }
-}
-
-
-//***********************************************************************************
-// FINDBUGS:
-
-//tasks.withType(FindBugs) {
-//    reports {
-//        xml.enabled false
-//        html.enabled true
-//    }
-//}
 

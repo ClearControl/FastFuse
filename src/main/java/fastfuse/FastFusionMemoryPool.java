@@ -197,7 +197,8 @@ public class FastFusionMemoryPool implements AutoCloseable
 
   public void releaseImage(String pName, ClearCLImage pImage)
   {
-    if (pImage == null) {
+    if (pImage == null)
+    {
       return;
     }
     assert mImagesInUse.contains(pImage);
