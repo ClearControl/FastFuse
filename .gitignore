@@ -11,3 +11,8 @@ old/
 
 /.idea/
 *.iml
+gradle/bintrayUpload.gradle
+gradle/codeformat.eclipse.xml
+gradle/installGitHooks
+gradle/master.gradle
+gradle/spotless.gradle
